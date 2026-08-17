@@ -35,6 +35,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -44,7 +45,9 @@ INSTALLED_APPS = [
     'apps.bio',
     'apps.chat',
     'apps.image_share',
-    'apps.core'
+    'apps.core',
+    'apps.notification',
+    'channels'
 ]
 
 MIDDLEWARE = [
@@ -75,7 +78,8 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'drf.wsgi.application'
+#WSGI_APPLICATION = 'drf.wsgi.application'
+ASGI_APPLICATION = "drf.asgi.application"
 
 
 # Database

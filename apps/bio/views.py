@@ -39,7 +39,7 @@ def signup(request):
         else:
             return redirect('/')
 
-@ratelimit(key='ip', rate='10/m')
+@ratelimit(key='user_or_ip', rate='10/m')
 @login_required
 def check(request):
     user = User.objects.get(id=request.user.id)
@@ -53,13 +53,13 @@ def check(request):
             image = Contentfile(avatar.read(),name=avatar.name)
 
             bio = Bio.objects.create(avatar=image,user=user)
-            bio.save()
+            #bio.save()
 
             return redirect('/')
     else:
         return redirect('/')
             
-@ratelimit(key='ip', rate='10/m')
+@ratelimit(key='user_or_ip', rate='10/m')
 @login_required
 def logout(request):
     logout(request.user)
