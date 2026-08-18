@@ -17,11 +17,15 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from ..apps import core, image_share, bio, chat
+from django.conf import settings
+from django.conf.urls.static import static
+from django.conf.urls.i18n import i18n_patterns
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('/', core.urls),
     path('chat/',chat.urls),
     path('image/',image_share.urls),
-    path('user/',bio.urls)
-]
+    path('user/',bio.urls),
+    path('i18n/', include('django.conf.urls.i18n'))
+] + static(settings.STATIC_URL, document_root=setting.STATIC_ROOT)
