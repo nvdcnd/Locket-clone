@@ -15,17 +15,17 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
-from ..apps import core, image_share, bio, chat
+from django.urls import path, include
+#from apps import core, image_share, bio, chat
 from django.conf import settings
 from django.conf.urls.static import static
 from django.conf.urls.i18n import i18n_patterns
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('/', core.urls),
-    path('chat/',chat.urls),
-    path('image/',image_share.urls),
-    path('user/',bio.urls),
+    path('/', include('apps.core.urls')),
+    path('chat/', include('apps.chat.urls')),
+    path('image/', include('apps.image_share.urls')),
+    path('user/', include('apps.bio.urls')),
     path('i18n/', include('django.conf.urls.i18n'))
-] + static(settings.STATIC_URL, document_root=setting.STATIC_ROOT)
+] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

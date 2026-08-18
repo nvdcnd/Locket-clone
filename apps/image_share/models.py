@@ -10,10 +10,10 @@ class Emoji_type(models.Model):
 
 class Image(models.Model):
     user = models.ForeignKey(Bio,on_delete=models.CASCADE,related_name='image_share_bio')
-    image = models.ImageField(upload_to='/Locket/images')
+    image = models.ImageField(upload_to='Locket/images/')
     text = models.CharField(max_length=255)
     type_share = models.ForeignKey(Image_type,null=True,on_delete=models.CASCADE,related_name='image_share_type')
-    shared_list = models.ManyToManyField(Bio,null=True,related_name='image_share_shared_list')
+    shared_list = models.ManyToManyField(Bio)
     create_at = models.DateTimeField(auto_now_add=True)
 
 class Image_emoji_share(models.Model):
