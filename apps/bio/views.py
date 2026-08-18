@@ -9,6 +9,8 @@ from .forms import LoginForm, UserRegistrationForm
 from django.contrib.auth.decorators import login_required
 from django_ratelimit.decorators import ratelimit
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.core.mail import send_mail
+from django.conf import settings
 
 # Authentication
 @ratelimit(key='ip', rate='10/m')
@@ -151,3 +153,4 @@ def bio_information_change(request):
             return JsonResponse({'success'}, 200)
     else:
         return JsonResponse({'error'},500)
+    
