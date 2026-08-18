@@ -46,7 +46,6 @@ INSTALLED_APPS = [
     'apps.chat',
     'apps.image_share',
     'apps.core',
-    'apps.notification',
     'channels'
 ]
 
