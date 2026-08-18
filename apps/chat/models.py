@@ -1,5 +1,6 @@
 from django.db import models
 from ..bio.models import Bio
+from ..image_share.models import Image
 
 # Create your models here.
 class ChatRoom(models.Model):
@@ -21,4 +22,6 @@ class Messages(models.Model):
     chatroom = models.ForeignKey(ChatRoom, on_delete=models.CASCADE, related_name='messages_at_chat_room')
     sender = models.ForeignKey(Bio, on_delete=models.CASCADE, related_name="messages_sender")
     message = models.TextField()
+    image_reply = models.ForeignKey(Image, on_delete=models.CASCADE, null=True, related_name="image_message_reply")
+    message_reply = models.ForeignKey('self', on_delete=models.CASCADE, null=True, related_name="message_reply")
     created_at = models.DateTimeField(auto_now_add=True)

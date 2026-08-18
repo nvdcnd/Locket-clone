@@ -68,3 +68,12 @@ def emojing_image(request, id):
         return JsonResponse({'success':'sucessful'}, 200)
     else:
         return JsonResponse({'error':'error'}, 500)
+
+@login_required
+def image_delete(request, id):
+    img = Image.objects.get(id=id,user__user_id = request.user.id)
+    if img:
+        img.delete()
+        return JsonResponse({'success':'image deleted'}, 200)
+    else:
+        return JsonResponse({'error':'you can not delete this image'}, 500)

@@ -16,7 +16,12 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
+from ..apps import core, image_share, bio, chat
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('/', core.urls),
+    path('chat/',chat.urls),
+    path('image/',image_share.urls),
+    path('user/',bio.urls)
 ]

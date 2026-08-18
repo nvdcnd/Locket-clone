@@ -5,5 +5,6 @@ from django.contrib.auth.models import User
 class Bio(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="bio_user")
     avatar = models.ImageField(upload_to='./Locket/avatar')
-    friends = models.ManyToManyField('self', related_name='bio_friends',null=True)
+    friends = models.ManyToManyField('self', through='Friends', related_name='bio_friends',null=True)
+
 
