@@ -136,7 +136,7 @@ def bio_information_change(request):
         if request.method == 'POST':
             username = request.POST.get('username')
             email = request.POST.get('email')
-            image = request.FILES.get('file')
+            image = request.FILES.get('image')
             password = request.POST.get('password')
 
             img = ContentFile(image.read(), name=image.name)
@@ -146,4 +146,4 @@ def bio_information_change(request):
             return JsonResponse({'success'}, status=200)
     else:
         return JsonResponse({'error'},status=500)
-    
+
