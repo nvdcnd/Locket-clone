@@ -10,12 +10,10 @@ from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from apps.test_helpers import (
-    ANH_GIF_1X1, THU_MUC_ANH_TAM, TestCoDuLieu, anh_mau, ket_ban, tao_nguoi_dung,
+    ANH_GIF_1X1, CAI_DAT_TEST, TestCoDuLieu, anh_mau, ket_ban, tao_nguoi_dung,
 )
 
 from apps.image_share.models import Emoji_type, Image, Image_emoji_share, Image_type
-
-CAI_DAT_TEST = dict(RATELIMIT_ENABLE=False, MEDIA_ROOT=THU_MUC_ANH_TAM)
 
 # Chuỗi base64 đúng dạng mà trình duyệt gửi lên khi đăng ảnh.
 ANH_BASE64 = 'data:image/gif;base64,' + base64.b64encode(ANH_GIF_1X1).decode()

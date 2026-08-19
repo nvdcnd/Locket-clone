@@ -3,4 +3,4 @@ from django.apps import AppConfig
 
 class ForgotPasswordConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'forgot_password'
+    name = 'apps.forgot_password'

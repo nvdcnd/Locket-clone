@@ -12,7 +12,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 # Create your views here.
-@ratelimit(key='user_or_ip', rate='500/m')
+@ratelimit(key='user_or_ip', rate='status=500/m')
 @login_required
 def chat_lists(request):
     bio = Bio.objects.filter(user=request.user).first()
@@ -28,7 +28,7 @@ def chat_lists(request):
 
     return render(request, 'chat/list.html', {'chat_lists':page_obj})
 
-@ratelimit(key='user_or_ip', rate='200/m')
+@ratelimit(key='user_or_ip', rate='status=200/m')
 @login_required
 def send_message(request, receiver_id):
     bio = Bio.objects.filter(user=request.user).first()
@@ -59,9 +59,9 @@ def send_message(request, receiver_id):
         )
 
         #new_message.save()
-        return JsonResponse({'success':'message was sent','message_id':message.id}, 200)
+        return JsonResponse({'success':'message was sent','message_id':message.id}, status=200)
 
-@ratelimit(key='user_or_ip', rate='200/m')
+@ratelimit(key='user_or_ip', rate='status=200/m')
 @login_required
 def reply_message(request, receiver_id, msg_id):
     bio = Bio.objects.filter(user=request.user).first()
@@ -94,11 +94,11 @@ def reply_message(request, receiver_id, msg_id):
             )
 
             #new_message.save()
-            return JsonResponse({'success':'message was sent','message_id':message.id}, 200)
+            return JsonResponse({'success':'message was sent','message_id':message.id}, status=200)
     else:
-        return JsonResponse({'error':'message was not sent','message_id':message.id}, 500)
+        return JsonResponse({'error':'message was not sent','message_id':message.id}, status=500)
 
-@ratelimit(key='user_or_ip', rate='200/m')
+@ratelimit(key='user_or_ip', rate='status=200/m')
 @login_required
 def reply_image(request, receiver_id, img_id):
     bio = Bio.objects.filter(user=request.user).first()
@@ -133,11 +133,11 @@ def reply_image(request, receiver_id, img_id):
             )
 
             #new_message.save()
-            return JsonResponse({'success':'message was sent','message_id':message.id}, 200)
+            return JsonResponse({'success':'message was sent','message_id':message.id}, status=200)
     else:
-        return JsonResponse({'error':'message was not sent','message_id':message.id}, 500)
+        return JsonResponse({'error':'message was not sent','message_id':message.id}, status=500)
     
-@ratelimit(key='user_or_ip', rate='500/m')
+@ratelimit(key='user_or_ip', rate='status=500/m')
 def room(request, room_id):
     return render(request, "chat/room.html", {'room_id':room_id})
     

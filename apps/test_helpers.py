@@ -17,6 +17,19 @@ from apps.bio.models import Bio
 # không làm bẩn thư mục dự án.
 THU_MUC_ANH_TAM = tempfile.mkdtemp(prefix='drf_test_media_')
 
+# Hasher nhanh cho test. Settings mới đặt BCrypt lên đầu nhưng gói bcrypt
+# chưa được cài (không có trong requirements.txt) — thiếu override này thì
+# mọi thao tác tạo user / đăng nhập đều sập.
+HASHER_NHANH = ['django.contrib.auth.hashers.MD5PasswordHasher']
+
+# Cấu hình chung cho các class test: tắt rate limit, ảnh vào thư mục tạm,
+# băm mật khẩu nhanh.
+CAI_DAT_TEST = dict(
+    RATELIMIT_ENABLE=False,
+    MEDIA_ROOT=THU_MUC_ANH_TAM,
+    PASSWORD_HASHERS=HASHER_NHANH,
+)
+
 # Một ảnh GIF 1x1 hợp lệ, đủ nhỏ để nhét thẳng vào code test.
 ANH_GIF_1X1 = (
     b'GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff'

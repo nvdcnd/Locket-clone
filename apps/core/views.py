@@ -9,9 +9,9 @@ from django.core.paginator import Paginator
 # Create your views here.
 @require_http_methods(["GET", "HEAD"])
 def health_chech(request):
-    return JsonResponse({"status":'ok'},200)
+    return JsonResponse({"status":'ok'},status=200)
 
-@ratelimit(key='user_or_ip', rate='500/m')
+@ratelimit(key='user_or_ip', rate='status=500/m')
 def index(request):
     if request.user.is_authenticated:
         bio = Bio.objects.get(user=request.user)

@@ -15,14 +15,15 @@ from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from apps.image_share.models import Image
-from apps.test_helpers import THU_MUC_ANH_TAM, TestCoDuLieu, anh_mau, tao_nguoi_dung
+from apps.test_helpers import CAI_DAT_TEST as CAI_DAT_CHUNG
+from apps.test_helpers import TestCoDuLieu, anh_mau, tao_nguoi_dung
 
 from apps.chat.models import ChatRoom, Messages
 from apps.chat.routing import websocket_urlpatterns
 
+# Chat cần thêm channel layer chạy trong RAM thay cho Redis thật.
 CAI_DAT_TEST = dict(
-    RATELIMIT_ENABLE=False,
-    MEDIA_ROOT=THU_MUC_ANH_TAM,
+    CAI_DAT_CHUNG,
     CHANNEL_LAYERS={'default': {'BACKEND': 'channels.layers.InMemoryChannelLayer'}},
 )
 
