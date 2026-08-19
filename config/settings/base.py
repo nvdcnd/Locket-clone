@@ -46,7 +46,7 @@ INSTALLED_APPS = [
     'apps.chat',
     'apps.image_share',
     'apps.core',
-    'apps.forgot_password'
+    'apps.forgot_password',
     'channels'
 ]
 
@@ -137,7 +137,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'vi'
 
-TIME_ZONE = 'VN'
+TIME_ZONE = 'Asia/Ho_Chi_Minh'
 
 USE_I18N = True
 
