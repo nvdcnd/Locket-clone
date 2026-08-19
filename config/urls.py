@@ -23,9 +23,10 @@ from django.conf.urls.i18n import i18n_patterns
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('/', include('apps.core.urls')),
+    path('', include('apps.core.urls')),
     path('chat/', include('apps.chat.urls')),
     path('image/', include('apps.image_share.urls')),
     path('user/', include('apps.bio.urls')),
+    path('forgot/', include('apps.forgot_password.urls')),
     path('i18n/', include('django.conf.urls.i18n'))
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

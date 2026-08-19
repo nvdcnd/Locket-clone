@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <title>Đăng ký</title>
+</head>
+<body>
+  <h1>Đăng ký</h1>
+  <form method="post" action="{% url 'signup' %}" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Đăng ký</button>
+  </form>
+  <p><a href="{% url 'login' %}">Đã có tài khoản? Đăng nhập</a></p>
+</body>
+</html>

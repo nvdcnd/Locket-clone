@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <title>Bạn bè</title>
+</head>
+<body>
+  <h1>Danh sách bạn bè</h1>
+  <ul>
+    {% for friend in chat_lists %}
+      <li>
+        {% if friend.avatar %}
+          <img src="{{ friend.avatar.url }}" alt="avatar" width="50">
+        {% endif %}
+        {{ friend.user.username }}
+      </li>
+    {% empty %}
+      <li>Bạn chưa có người bạn nào.</li>
+    {% endfor %}
+  </ul>
+  {% if chat_lists.has_next %}
+    <a href="?page={{ chat_lists.next_page_number }}">Trang sau</a>
+  {% endif %}
+</body>
+</html>

@@ -11,142 +11,142 @@ from channels.layers import get_channel_layer
 from channels.routing import URLRouter
 from channels.testing import WebsocketCommunicator
 from django.db import IntegrityError, transaction
-from django.test import Client, TestCase, override_settings
+from django.test import Client, override_settings
 from django.urls import reverse
 
 from apps.image_share.models import Image
-from apps.test_helpers import CAI_DAT_TEST as CAI_DAT_CHUNG
-from apps.test_helpers import TestCoDuLieu, anh_mau, tao_nguoi_dung
+from apps.test_helpers import TEST_SETTINGS as BASE_TEST_SETTINGS
+from apps.test_helpers import BaseTestCase, create_user_with_bio, sample_image
 
 from apps.chat.models import ChatRoom, Messages
 from apps.chat.routing import websocket_urlpatterns
 
 # Chat cần thêm channel layer chạy trong RAM thay cho Redis thật.
-CAI_DAT_TEST = dict(
-    CAI_DAT_CHUNG,
+TEST_SETTINGS = dict(
+    BASE_TEST_SETTINGS,
     CHANNEL_LAYERS={'default': {'BACKEND': 'channels.layers.InMemoryChannelLayer'}},
 )
 
 
-@override_settings(**CAI_DAT_TEST)
-class ChatRoomModelTest(TestCoDuLieu):
+@override_settings(**TEST_SETTINGS)
+class ChatRoomModelTest(BaseTestCase):
     def setUp(self):
-        _, self.bio_an = tao_nguoi_dung('an')
-        _, self.bio_binh = tao_nguoi_dung('binh')
+        _, self.bio1 = create_user_with_bio('an')
+        _, self.bio2 = create_user_with_bio('binh')
 
-    def test_tao_phong_chat_giua_hai_nguoi(self):
-        phong = ChatRoom.objects.create(user1=self.bio_an, user2=self.bio_binh)
-        self.assertEqual(phong.user1_last_read_msg_id, 0)
-        self.assertEqual(phong.user2_last_read_msg_id, 0)
+    def test_create_room_between_two_users(self):
+        room = ChatRoom.objects.create(user1=self.bio1, user2=self.bio2)
+        self.assertEqual(room.user1_last_read_msg_id, 0)
+        self.assertEqual(room.user2_last_read_msg_id, 0)
 
-    def test_khong_tao_duoc_hai_phong_giong_het_nhau(self):
-        ChatRoom.objects.create(user1=self.bio_an, user2=self.bio_binh)
+    def test_duplicate_room_not_allowed(self):
+        ChatRoom.objects.create(user1=self.bio1, user2=self.bio2)
         with self.assertRaises(IntegrityError):
             with transaction.atomic():
-                ChatRoom.objects.create(user1=self.bio_an, user2=self.bio_binh)
+                ChatRoom.objects.create(user1=self.bio1, user2=self.bio2)
 
-    def test_khong_tao_duoc_phong_dao_chieu(self):
+    def test_reversed_duplicate_room_not_allowed(self):
         """Đã có phòng (An, Bình) thì không được tạo thêm phòng (Bình, An).
 
         Comment trong model nói rõ "2 người không thể tạo 2 phòng chat trùng
         nhau", nhưng unique_together hiện tại không chặn được chiều ngược lại.
         """
-        ChatRoom.objects.create(user1=self.bio_an, user2=self.bio_binh)
+        ChatRoom.objects.create(user1=self.bio1, user2=self.bio2)
         with self.assertRaises(IntegrityError):
             with transaction.atomic():
-                ChatRoom.objects.create(user1=self.bio_binh, user2=self.bio_an)
+                ChatRoom.objects.create(user1=self.bio2, user2=self.bio1)
 
 
-@override_settings(**CAI_DAT_TEST)
-class MessagesModelTest(TestCoDuLieu):
+@override_settings(**TEST_SETTINGS)
+class MessagesModelTest(BaseTestCase):
     def setUp(self):
-        _, self.bio_an = tao_nguoi_dung('an')
-        _, self.bio_binh = tao_nguoi_dung('binh')
-        self.phong = ChatRoom.objects.create(user1=self.bio_an, user2=self.bio_binh)
+        _, self.bio1 = create_user_with_bio('an')
+        _, self.bio2 = create_user_with_bio('binh')
+        self.room = ChatRoom.objects.create(user1=self.bio1, user2=self.bio2)
 
-    def test_tao_tin_nhan_thuong(self):
-        tin = Messages.objects.create(chatroom=self.phong, sender=self.bio_an, message='chào Bình')
-        self.assertEqual(tin.message, 'chào Bình')
-        self.assertIsNone(tin.image_reply)
-        self.assertIsNone(tin.message_reply)
+    def test_create_plain_message(self):
+        msg = Messages.objects.create(chatroom=self.room, sender=self.bio1, message='chào Bình')
+        self.assertEqual(msg.message, 'chào Bình')
+        self.assertIsNone(msg.image_reply)
+        self.assertIsNone(msg.message_reply)
 
-    def test_tin_nhan_tra_loi_tin_nhan(self):
-        goc = Messages.objects.create(chatroom=self.phong, sender=self.bio_an, message='ăn cơm chưa?')
-        tra_loi = Messages.objects.create(
-            chatroom=self.phong, sender=self.bio_binh,
-            message='rồi nhé', message_reply=goc,
+    def test_reply_to_message(self):
+        original = Messages.objects.create(chatroom=self.room, sender=self.bio1, message='ăn cơm chưa?')
+        reply = Messages.objects.create(
+            chatroom=self.room, sender=self.bio2,
+            message='rồi nhé', message_reply=original,
         )
-        self.assertEqual(tra_loi.message_reply, goc)
+        self.assertEqual(reply.message_reply, original)
 
-    def test_tin_nhan_tra_loi_anh(self):
-        anh = Image.objects.create(user=self.bio_an, image=anh_mau(), text='ảnh đẹp')
-        tra_loi = Messages.objects.create(
-            chatroom=self.phong, sender=self.bio_binh,
-            message='ảnh xịn đấy', image_reply=anh,
+    def test_reply_to_image(self):
+        image = Image.objects.create(user=self.bio1, image=sample_image(), text='ảnh đẹp')
+        reply = Messages.objects.create(
+            chatroom=self.room, sender=self.bio2,
+            message='ảnh xịn đấy', image_reply=image,
         )
-        self.assertEqual(tra_loi.image_reply, anh)
+        self.assertEqual(reply.image_reply, image)
 
-    def test_xoa_phong_thi_tin_nhan_mat_theo(self):
-        Messages.objects.create(chatroom=self.phong, sender=self.bio_an, message='chào')
-        self.phong.delete()
+    def test_deleting_room_deletes_messages(self):
+        Messages.objects.create(chatroom=self.room, sender=self.bio1, message='chào')
+        self.room.delete()
         self.assertEqual(Messages.objects.count(), 0)
 
 
-@override_settings(**CAI_DAT_TEST)
-class DanhSachChatTest(TestCoDuLieu):
+@override_settings(**TEST_SETTINGS)
+class ChatListTest(BaseTestCase):
     def setUp(self):
         self.client = Client(raise_request_exception=False)
-        self.user_an, self.bio_an = tao_nguoi_dung('an')
+        self.user1, self.bio1 = create_user_with_bio('an')
 
-    def test_chua_dang_nhap_bi_day_ve_trang_login(self):
+    def test_anonymous_is_redirected_to_login(self):
         response = self.client.get(reverse('chat_list'))
         self.assertEqual(response.status_code, 302)
         self.assertIn('login', response.url)
 
-    def test_xem_danh_sach_doan_chat(self):
-        _, bio_binh = tao_nguoi_dung('binh')
-        ChatRoom.objects.create(user1=self.bio_an, user2=bio_binh)
-        self.client.force_login(self.user_an)
+    def test_view_chat_list(self):
+        _, bio2 = create_user_with_bio('binh')
+        ChatRoom.objects.create(user1=self.bio1, user2=bio2)
+        self.client.force_login(self.user1)
         response = self.client.get(reverse('chat_list'))
         self.assertEqual(response.status_code, 200)
 
 
-@override_settings(**CAI_DAT_TEST)
-class GuiTinNhanTest(TestCoDuLieu):
+@override_settings(**TEST_SETTINGS)
+class SendMessageTest(BaseTestCase):
     def setUp(self):
         self.client = Client(raise_request_exception=False)
-        self.user_an, self.bio_an = tao_nguoi_dung('an')
-        self.user_binh, self.bio_binh = tao_nguoi_dung('binh')
-        self.client.force_login(self.user_an)
+        self.user1, self.bio1 = create_user_with_bio('an')
+        self.user2, self.bio2 = create_user_with_bio('binh')
+        self.client.force_login(self.user1)
 
-    def _gui_tin(self, noi_dung='chào Bình'):
+    def _send(self, text='chào Bình'):
         return self.client.post(
-            reverse('send_message', args=[self.user_binh.id]),
-            data=json.dumps({'message': noi_dung}),
+            reverse('send_message', args=[self.user2.id]),
+            data=json.dumps({'message': text}),
             content_type='application/json',
         )
 
-    def test_gui_tin_thi_tin_duoc_luu(self):
-        self._gui_tin('chào Bình')
-        tin = Messages.objects.filter(message='chào Bình').first()
-        self.assertIsNotNone(tin, 'Tin nhắn phải được lưu vào hệ thống')
-        self.assertEqual(tin.sender, self.bio_an)
+    def test_message_is_saved(self):
+        self._send('chào Bình')
+        msg = Messages.objects.filter(message='chào Bình').first()
+        self.assertIsNotNone(msg, 'Tin nhắn phải được lưu vào hệ thống')
+        self.assertEqual(msg.sender, self.bio1)
 
-    def test_tu_dong_tao_phong_khi_chua_co(self):
+    def test_room_is_created_automatically(self):
         """Nhắn cho người chưa từng chat thì phòng được tạo, nhắn tiếp không tạo thêm."""
-        self._gui_tin('tin thứ nhất')
-        self._gui_tin('tin thứ hai')
+        self._send('tin thứ nhất')
+        self._send('tin thứ hai')
         self.assertEqual(ChatRoom.objects.count(), 1)
 
-    def test_gui_tin_bao_thanh_cong(self):
-        response = self._gui_tin()
+    def test_send_returns_success(self):
+        response = self._send()
         self.assertEqual(response.status_code, 200)
         self.assertIn('message_id', json.loads(response.content))
 
-    def test_chua_dang_nhap_thi_khong_gui_duoc(self):
-        khach = Client(raise_request_exception=False)
-        response = khach.post(
-            reverse('send_message', args=[self.user_binh.id]),
+    def test_anonymous_cannot_send(self):
+        guest = Client(raise_request_exception=False)
+        response = guest.post(
+            reverse('send_message', args=[self.user2.id]),
             data=json.dumps({'message': 'lén lút'}),
             content_type='application/json',
         )
@@ -154,57 +154,66 @@ class GuiTinNhanTest(TestCoDuLieu):
         self.assertIn('login', response.url)
 
 
-@override_settings(**CAI_DAT_TEST)
-class TraLoiTinNhanTest(TestCoDuLieu):
+@override_settings(**TEST_SETTINGS)
+class ReplyTest(BaseTestCase):
     def setUp(self):
         self.client = Client(raise_request_exception=False)
-        self.user_an, self.bio_an = tao_nguoi_dung('an')
-        self.user_binh, self.bio_binh = tao_nguoi_dung('binh')
-        self.phong = ChatRoom.objects.create(user1=self.bio_an, user2=self.bio_binh)
-        self.client.force_login(self.user_an)
+        self.user1, self.bio1 = create_user_with_bio('an')
+        self.user2, self.bio2 = create_user_with_bio('binh')
+        self.room = ChatRoom.objects.create(user1=self.bio1, user2=self.bio2)
+        self.client.force_login(self.user1)
 
-    def test_tra_loi_tin_nhan_giu_dung_tin_goc(self):
+    def test_reply_links_to_original_message(self):
         """Trả lời một tin nhắn thì tin mới phải trỏ về đúng tin gốc."""
-        goc = Messages.objects.create(chatroom=self.phong, sender=self.bio_binh, message='ăn cơm chưa?')
+        original = Messages.objects.create(chatroom=self.room, sender=self.bio2, message='ăn cơm chưa?')
         self.client.post(
-            reverse('reply_message', args=[self.user_binh.id, goc.id]),
+            reverse('reply_message', args=[self.user2.id, original.id]),
             data=json.dumps({'message': 'rồi nhé'}),
             content_type='application/json',
         )
-        tra_loi = Messages.objects.filter(message='rồi nhé').first()
-        self.assertIsNotNone(tra_loi, 'Tin trả lời phải được lưu')
-        self.assertEqual(tra_loi.message_reply, goc)
+        reply = Messages.objects.filter(message='rồi nhé').first()
+        self.assertIsNotNone(reply, 'Tin trả lời phải được lưu')
+        self.assertEqual(reply.message_reply, original)
 
-    def test_tra_loi_tin_khong_ton_tai_thi_bao_loi(self):
+    def test_reply_to_missing_message_fails(self):
         response = self.client.post(
-            reverse('reply_message', args=[self.user_binh.id, 999999]),
+            reverse('reply_message', args=[self.user2.id, 999999]),
             data=json.dumps({'message': 'nói với ai đây?'}),
             content_type='application/json',
         )
         self.assertGreaterEqual(response.status_code, 400)
 
-    def test_tra_loi_anh_giu_dung_anh_goc(self):
+    def test_reply_links_to_original_image(self):
         """Trả lời một tấm ảnh thì tin mới phải trỏ về đúng ảnh đó."""
-        anh = Image.objects.create(user=self.bio_binh, image=anh_mau(), text='ảnh chơi')
+        image = Image.objects.create(user=self.bio2, image=sample_image(), text='ảnh chơi')
         self.client.post(
-            reverse('reply_image', args=[self.user_binh.id, anh.id]),
+            reverse('reply_image', args=[self.user2.id, image.id]),
             data=json.dumps({'message': 'ảnh đẹp thế'}),
             content_type='application/json',
         )
-        tra_loi = Messages.objects.filter(message='ảnh đẹp thế').first()
-        self.assertIsNotNone(tra_loi, 'Tin trả lời ảnh phải được lưu')
-        self.assertEqual(tra_loi.image_reply, anh)
+        reply = Messages.objects.filter(message='ảnh đẹp thế').first()
+        self.assertIsNotNone(reply, 'Tin trả lời ảnh phải được lưu')
+        self.assertEqual(reply.image_reply, image)
 
 
-@override_settings(**CAI_DAT_TEST)
-class PhongChatTest(TestCoDuLieu):
-    def test_mo_phong_chat(self):
+@override_settings(**TEST_SETTINGS)
+class ChatRoomPageTest(BaseTestCase):
+    def test_open_chat_room(self):
+        user, _ = create_user_with_bio('an')
         client = Client(raise_request_exception=False)
+        client.force_login(user)
         response = client.get(reverse('chat_room', args=[1]))
         self.assertEqual(response.status_code, 200)
 
+    def test_anonymous_is_redirected_to_login(self):
+        """Phòng chat giờ đã yêu cầu đăng nhập mới xem được."""
+        client = Client(raise_request_exception=False)
+        response = client.get(reverse('chat_room', args=[1]))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('login', response.url)
 
-class GanUserVaoScope:
+
+class AttachUserToScope:
     """Middleware tí hon cho test: gắn sẵn user vào scope của WebSocket."""
 
     def __init__(self, app, user):
@@ -215,67 +224,67 @@ class GanUserVaoScope:
         return await self.app(dict(scope, user=self.user), receive, send)
 
 
-@override_settings(**CAI_DAT_TEST)
-class ChatWebSocketTest(TestCoDuLieu):
-    def _ket_noi(self, user, room_id=1):
-        app = GanUserVaoScope(URLRouter(websocket_urlpatterns), user)
+@override_settings(**TEST_SETTINGS)
+class ChatWebSocketTest(BaseTestCase):
+    def _connect(self, user, room_id=1):
+        app = AttachUserToScope(URLRouter(websocket_urlpatterns), user)
         return WebsocketCommunicator(app, f'ws/chat/{room_id}')
 
-    def test_ket_noi_duoc_vao_phong_chat(self):
-        user, _ = tao_nguoi_dung('an')
+    def test_connect_to_room(self):
+        user, _ = create_user_with_bio('an')
 
-        async def kich_ban():
-            ket_noi = self._ket_noi(user)
+        async def scenario():
+            comm = self._connect(user)
             try:
-                thanh_cong, _ = await ket_noi.connect()
-                self.assertTrue(thanh_cong, 'WebSocket phải kết nối được vào phòng chat')
+                connected, _ = await comm.connect()
+                self.assertTrue(connected, 'WebSocket phải kết nối được vào phòng chat')
             finally:
                 with contextlib.suppress(Exception):
-                    await ket_noi.disconnect()
+                    await comm.disconnect()
 
-        async_to_sync(kich_ban)()
+        async_to_sync(scenario)()
 
-    def test_bao_dang_go_phim_cho_nguoi_kia(self):
+    def test_typing_is_broadcast(self):
         """An gõ phím thì Bình (đang mở cùng phòng) nhận được tín hiệu typing."""
-        user_an, _ = tao_nguoi_dung('an')
-        user_binh, _ = tao_nguoi_dung('binh')
+        user1, _ = create_user_with_bio('an')
+        user2, _ = create_user_with_bio('binh')
 
-        async def kich_ban():
-            an = self._ket_noi(user_an)
-            binh = self._ket_noi(user_binh)
+        async def scenario():
+            comm1 = self._connect(user1)
+            comm2 = self._connect(user2)
             try:
-                await an.connect()
-                await binh.connect()
-                await an.send_json_to({'type': 'typing', 'is_typing': True})
-                su_kien = await binh.receive_json_from()
-                self.assertEqual(su_kien['type'], 'user_typing')
-                self.assertEqual(su_kien['user_id'], user_an.id)
-                self.assertTrue(su_kien['is_typing'])
+                await comm1.connect()
+                await comm2.connect()
+                await comm1.send_json_to({'type': 'typing', 'is_typing': True})
+                event = await comm2.receive_json_from()
+                self.assertEqual(event['type'], 'user_typing')
+                self.assertEqual(event['user_id'], user1.id)
+                self.assertTrue(event['is_typing'])
             finally:
-                for ket_noi in (an, binh):
+                for comm in (comm1, comm2):
                     with contextlib.suppress(Exception):
-                        await ket_noi.disconnect()
+                        await comm.disconnect()
 
-        async_to_sync(kich_ban)()
+        async_to_sync(scenario)()
 
-    def test_nhan_thong_bao_tin_nhan_moi(self):
+    def test_new_message_notification(self):
         """Có tin nhắn mới bắn vào phòng thì người đang mở phòng nhận được ngay."""
-        user, _ = tao_nguoi_dung('an')
+        user, _ = create_user_with_bio('an')
 
-        async def kich_ban():
-            ket_noi = self._ket_noi(user, room_id=7)
+        async def scenario():
+            comm = self._connect(user, room_id=7)
             try:
-                await ket_noi.connect()
+                await comm.connect()
                 await get_channel_layer().group_send('chat_7', {
                     'type': 'new_message_notification',
                     'message_id': 1,
                     'text': 'chào bạn',
                     'sender_id': user.id,
                 })
-                su_kien = await ket_noi.receive_json_from()
-                self.assertEqual(su_kien['text'], 'chào bạn')
+                event = await comm.receive_json_from()
+                self.assertEqual(event['text'], 'chào bạn')
             finally:
                 with contextlib.suppress(Exception):
-                    await ket_noi.disconnect()
+                    await comm.disconnect()
 
-        async_to_sync(kich_ban)()
+        async_to_sync(scenario)()

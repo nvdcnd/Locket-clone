@@ -18,6 +18,13 @@ class ChatRoom(models.Model):
         # Ràng buộc để 2 người không thể tạo 2 phòng chat trùng nhau
         unique_together = ('user1', 'user2')
 
+    def save(self, *args, **kwargs):
+        # Luôn xếp bio có id nhỏ hơn làm user1, nhờ đó phòng (A,B) và (B,A)
+        # là một và unique_together chặn được cả chiều ngược lại.
+        if self.user1_id and self.user2_id and self.user1_id > self.user2_id:
+            self.user1, self.user2 = self.user2, self.user1
+        super().save(*args, **kwargs)
+
 class Messages(models.Model):
     chatroom = models.ForeignKey(ChatRoom, on_delete=models.CASCADE, related_name='messages_at_chat_room')
     sender = models.ForeignKey(Bio, on_delete=models.CASCADE, related_name="messages_sender")

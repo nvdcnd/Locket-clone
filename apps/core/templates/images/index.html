@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <title>Bảng tin</title>
+</head>
+<body>
+  <h1>Bảng tin</h1>
+  <ul>
+    {% for image in images %}
+      <li>
+        <img src="{{ image.image.url }}" alt="{{ image.text }}" width="200">
+        <p>{{ image.text }}</p>
+      </li>
+    {% empty %}
+      <li>Chưa có ảnh nào. Hãy đăng ảnh đầu tiên của bạn!</li>
+    {% endfor %}
+  </ul>
+  {% if has_next %}
+    <p data-last-page="{{ last_page|date:'c' }}">Kéo xuống để xem thêm...</p>
+  {% endif %}
+</body>
+</html>

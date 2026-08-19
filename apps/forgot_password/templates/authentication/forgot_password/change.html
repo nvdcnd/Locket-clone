@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <title>Đặt mật khẩu mới</title>
+</head>
+<body>
+  <h1>Đặt mật khẩu mới</h1>
+  <form method="post">
+    {% csrf_token %}
+    <input type="password" name="password" placeholder="Mật khẩu mới" required>
+    <button type="submit">Đổi mật khẩu</button>
+  </form>
+</body>
+</html>

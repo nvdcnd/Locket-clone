@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <title>Nhập mã xác nhận</title>
+</head>
+<body>
+  <h1>Nhập mã xác nhận</h1>
+  <p>Mã xác nhận đã được gửi tới email của bạn (hết hạn sau 10 phút).</p>
+  <form method="post">
+    {% csrf_token %}
+    <input type="text" name="code" placeholder="Mã xác nhận" required>
+    <button type="submit">Xác nhận</button>
+  </form>
+</body>
+</html>

@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <title>Đoạn chat</title>
+</head>
+<body>
+  <h1>Đoạn chat của bạn</h1>
+  <ul>
+    {% for room in chat_lists %}
+      <li>
+        <a href="{% url 'chat_room' room.id %}">
+          Phòng #{{ room.id }}: {{ room.user1.user.username }} và {{ room.user2.user.username }}
+        </a>
+      </li>
+    {% empty %}
+      <li>Chưa có đoạn chat nào.</li>
+    {% endfor %}
+  </ul>
+  {% if chat_lists.has_next %}
+    <a href="?page={{ chat_lists.next_page_number }}">Trang sau</a>
+  {% endif %}
+</body>
+</html>

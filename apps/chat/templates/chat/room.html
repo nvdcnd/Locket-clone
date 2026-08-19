@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <title>Phòng chat #{{ room_id }}</title>
+</head>
+<body>
+  <h1>Phòng chat #{{ room_id }}</h1>
+  <div id="messages"></div>
+  <input id="message-input" type="text" placeholder="Nhập tin nhắn...">
+  <button id="send-button">Gửi</button>
+
+  <script>
+    const roomId = "{{ room_id }}";
+    const socket = new WebSocket(
+      (window.location.protocol === 'https:' ? 'wss://' : 'ws://')
+      + window.location.host + '/ws/chat/' + roomId
+    );
+
+    socket.onmessage = function (event) {
+      const data = JSON.parse(event.data);
+      if (data.type === 'new_message_notification') {
+        const el = document.createElement('p');
+        el.textContent = data.text;
+        document.getElementById('messages').appendChild(el);
+      }
+    };
+  </script>
+</body>
+</html>

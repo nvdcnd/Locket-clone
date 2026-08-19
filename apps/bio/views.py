@@ -4,75 +4,69 @@ from django.contrib.auth.models import User
 from .models import Bio
 from django.db import transaction
 from django.core.files.base import ContentFile
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import login, logout
 from .forms import LoginForm, UserRegistrationForm
 from django.contrib.auth.decorators import login_required
 from django_ratelimit.decorators import ratelimit
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.core.mail import send_mail
-from django.conf import settings
+from django.contrib.auth.hashers import check_password
 
 # Authentication
 @ratelimit(key='ip', rate='10/m')
-def login(request):
+def login_view(request):
     if request.method == 'POST':
         form = LoginForm(request.POST)
         if form.is_valid():
-            check = authenticate(request, email=form['email'], password=form['password'])
-            if check:
-                login(request, check, backend='django.contrib.auth.backends.ModelBackend')
+            user = User.objects.filter(email=form.cleaned_data['email']).first()
+            if user and check_password(form.cleaned_data['password'], user.password):
+                login(request, user, backend='django.contrib.auth.backends.ModelBackend')
                 return redirect('check')
-            else:
-                return redirect('/')
+        return redirect('/')
+    return render(request, 'bio/authentication/login.html', {'form': LoginForm()})
 
 @ratelimit(key='ip', rate='10/m')
 def signup(request):
-    if request.medthod == 'POST':
-        form = UserRegistrationForm(request.POST)
+    if request.method == 'POST':
+        # Form có ảnh nên phải đưa cả request.FILES vào
+        form = UserRegistrationForm(request.POST, request.FILES)
         if form.is_valid():
-            user_check = User.objects.get(email=form['email'])
-            if not user_check:
-                user = User.objects.create_user(form['username'],form['email'],form['password'])
-                user.save()
+            email_taken = User.objects.filter(email=form.cleaned_data['email']).exists()
+            if not email_taken:
+                user = User.objects.create_user(
+                    form.cleaned_data['username'],
+                    form.cleaned_data['email'],
+                    form.cleaned_data['password'],
+                )
 
-                image = ContentFile(form['image'].read(),name=form['image'].name)
-                bio = Bio.objects.create(avatar=image,user=user)
+                image = ContentFile(form.cleaned_data['image'].read(), name=form.cleaned_data['image'].name)
+                Bio.objects.create(avatar=image, user=user)
 
-                login(request,user,backend='django.contrib.auth.backends.ModelBackend')
+                login(request, user, backend='django.contrib.auth.backends.ModelBackend')
 
                 return redirect('check')
-            else:
-                if authenticate(request,email=form['email'],password=['password']):
-                    login(user_check, backend='django.contrib.auth.backends.ModelBackend')
-                    return redirect("check")
-        else:
-            return redirect('/')
+        return redirect('/')
+    return render(request, 'bio/authentication/signup.html', {'form': UserRegistrationForm()})
 
 @ratelimit(key='user_or_ip', rate='10/m')
 @login_required
 def check(request):
-    user = User.objects.get(id=request.user.id)
-    bio = Bio.objects.get(user=user)
-    if user and bio:
-        return redirect('/')
-    else:
-            bio = Bio.objects.create(user=user)
-            #bio.save()
-        
-            return redirect('/')
-    #return render(request, 'bio/authentication/check.html')
-            
-@ratelimit(key='user_or_ip', rate='10/m')
-@login_required
-def logout(request):
-    logout(request.user)
+    if not Bio.objects.filter(user=request.user).exists():
+        Bio.objects.create(user=request.user)
     return redirect('/')
 
-# Friends 
-@ratelimit(key='user_or_ip', rate='status=500/m')
+@ratelimit(key='user_or_ip', rate='10/m')
+@login_required
+def log_out(request):
+    logout(request)
+    return redirect('/')
+
+# Friends
+@ratelimit(key='user_or_ip', rate='500/m')
 @login_required
 def friends_list(request):
-    bio = Bio.objects.get(user=request.user)
+    bio = Bio.objects.filter(user=request.user).first()
+    if not bio:
+        return redirect('check')
     friends = bio.friends.all()[::-1]
     pagination = Paginator(friends, 10)
     page = request.GET.get('page')
@@ -82,47 +76,49 @@ def friends_list(request):
         page_obj = pagination.page(1)
     except EmptyPage:
         page_obj = pagination.page(pagination.num_pages)
-    
+
     return render(request, 'bio/friends/list.html', {'chat_lists':page_obj})
 
 
-@ratelimit(key='user_or_ip', rate='status=500/m')
+@ratelimit(key='user_or_ip', rate='500/m')
 @login_required
 @transaction.atomic
 def unfriend(request, id):
-    bio = Bio.objects.get(user=request.user)
-    fr = Bio.objects.get(id=id)
-    if bio.friends.get(fr) and fr.friends.get(bio):
-        bio.friends.delete(fr)
-        fr.friends.delete(bio)
-        return JsonResponse({'success':'unfriend successfully'}, status=200)
+    bio = Bio.objects.filter(user=request.user).first()
+    fr = Bio.objects.filter(id=id).first()
+    if bio and fr and bio.friends.filter(id=fr.id).exists():
+        bio.friends.remove(fr)
+        fr.friends.remove(bio)
+        return JsonResponse({'success': 'unfriend successfully'}, status=200)
     else:
-        return JsonResponse({'error':'error'},status=500)
+        return JsonResponse({'error': 'you are not friends'}, status=400)
 
-@ratelimit(key='user_or_ip', rate='status=500/m')
+@ratelimit(key='user_or_ip', rate='500/m')
 @login_required
 @transaction.atomic
-def add_friend(request, from_id):
-    bio = Bio.objects.get(user=request.user)
-    friend = Bio.objects.get(id=from_id)
-    if bio.friends.get(friend) and friend.friends.get(bio):
-        return JsonResponse({'error'},status=500)
+def add_friend(request, id):
+    bio = Bio.objects.filter(user=request.user).first()
+    friend = Bio.objects.filter(id=id).first()
+    if not bio or not friend or bio.id == friend.id:
+        return JsonResponse({'error': 'invalid friend'}, status=400)
+    if bio.friends.filter(id=friend.id).exists():
+        return JsonResponse({'error': 'already friends'}, status=400)
     else:
         bio.friends.add(friend)
         friend.friends.add(bio)
-        return JsonResponse({'sucess'},sattus=200)
+        return JsonResponse({'success': 'friend added'}, status=200)
 
-@ratelimit(key='user_or_ip', rate='status=500/m')
+@ratelimit(key='user_or_ip', rate='500/m')
 @login_required
 def friends_information(request, id):
     bio = Bio.objects.filter(id=id)
     if bio:
         return render(request, 'bio/information.html', {'informations':bio})
     else:
-        return JsonResponse({'error'},status=500)
+        return JsonResponse({'error': 'friend not found'}, status=404)
 
 # Bio
-@ratelimit(key='user_or_ip', rate='status=500/m')
+@ratelimit(key='user_or_ip', rate='500/m')
 @login_required
 def bio(request):
     bio = Bio.objects.filter(user=request.user)
@@ -130,20 +126,29 @@ def bio(request):
 
 @ratelimit(key='user_or_ip',rate='100/m')
 @login_required
+@transaction.atomic
 def bio_information_change(request):
-    bio = Bio.objects.get(user=request.user)
-    if bio:
-        if request.method == 'POST':
-            username = request.POST.get('username')
-            email = request.POST.get('email')
-            image = request.FILES.get('file')
-            password = request.POST.get('password')
+    bio = Bio.objects.filter(user=request.user).first()
+    if not bio:
+        return JsonResponse({'error': 'bio not found'}, status=404)
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        email = request.POST.get('email')
+        image = request.FILES.get('file')
+        password = request.POST.get('password')
 
-            img = ContentFile(image.read(), name=image.name)
+        user = bio.user
+        if username:
+            user.username = username
+        if email:
+            user.email = email
+        if password:
+            user.set_password(password)
+        user.save()
 
-            bio.objects.update(username=username,password=password,email=email,avatar=img)
+        if image:
+            bio.avatar = ContentFile(image.read(), name=image.name)
+            bio.save()
 
-            return JsonResponse({'success'}, status=200)
-    else:
-        return JsonResponse({'error'},status=500)
-    
+        return JsonResponse({'success': 'information updated'}, status=200)
+    return JsonResponse({'error': 'method not allowed'}, status=405)

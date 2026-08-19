@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <title>Thông tin cá nhân</title>
+</head>
+<body>
+  <h1>Thông tin cá nhân</h1>
+  <ul>
+    {% for info in informations %}
+      <li>
+        {% if info.avatar %}
+          <img src="{{ info.avatar.url }}" alt="avatar" width="100">
+        {% endif %}
+        <p>Tên: {{ info.user.username }}</p>
+        <p>Email: {{ info.user.email }}</p>
+      </li>
+    {% empty %}
+      <li>Không tìm thấy thông tin.</li>
+    {% endfor %}
+  </ul>
+</body>
+</html>
