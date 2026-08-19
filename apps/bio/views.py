@@ -56,18 +56,11 @@ def check(request):
     if user and bio:
         return redirect('/')
     else:
-        if request.method == "POST":
-            avatar = request.FILE.get('avatar')
-            if not avatar:
-                return JsonResponse({"error": "Không có dữ liệu ảnh"}, status=400)
-        
-            image = ContentFile(avatar.read(),name=avatar.name)
-        
-            bio = Bio.objects.create(avatar=image,user=user)
+            bio = Bio.objects.create(user=user)
             #bio.save()
         
             return redirect('/')
-    return render(request, 'bio/authentication/check.html')
+    #return render(request, 'bio/authentication/check.html')
             
 @ratelimit(key='user_or_ip', rate='10/m')
 @login_required
@@ -76,7 +69,7 @@ def logout(request):
     return redirect('/')
 
 # Friends 
-@ratelimit(key='user_or_ip', rate='500/m')
+@ratelimit(key='user_or_ip', rate='status=500/m')
 @login_required
 def friends_list(request):
     bio = Bio.objects.get(user=request.user)
@@ -93,7 +86,7 @@ def friends_list(request):
     return render(request, 'bio/friends/list.html', {'chat_lists':page_obj})
 
 
-@ratelimit(key='user_or_ip', rate='500/m')
+@ratelimit(key='user_or_ip', rate='status=500/m')
 @login_required
 @transaction.atomic
 def unfriend(request, id):
@@ -102,34 +95,34 @@ def unfriend(request, id):
     if bio.friends.get(fr) and fr.friends.get(bio):
         bio.friends.delete(fr)
         fr.friends.delete(bio)
-        return JsonResponse({'success':'unfriend successfully'}, 200)
+        return JsonResponse({'success':'unfriend successfully'}, status=200)
     else:
-        return JsonResponse({'error':'error'},500)
+        return JsonResponse({'error':'error'},status=500)
 
-@ratelimit(key='user_or_ip', rate='500/m')
+@ratelimit(key='user_or_ip', rate='status=500/m')
 @login_required
 @transaction.atomic
 def add_friend(request, from_id):
     bio = Bio.objects.get(user=request.user)
     friend = Bio.objects.get(id=from_id)
     if bio.friends.get(friend) and friend.friends.get(bio):
-        return JsonResponse({'error'},500)
+        return JsonResponse({'error'},status=500)
     else:
         bio.friends.add(friend)
         friend.friends.add(bio)
-        return JsonResponse({'sucess'})
+        return JsonResponse({'sucess'},sattus=200)
 
-@ratelimit(key='user_or_ip', rate='500/m')
+@ratelimit(key='user_or_ip', rate='status=500/m')
 @login_required
 def friends_information(request, id):
     bio = Bio.objects.filter(id=id)
     if bio:
         return render(request, 'bio/information.html', {'informations':bio})
     else:
-        return JsonResponse({'error'},500)
+        return JsonResponse({'error'},status=500)
 
 # Bio
-@ratelimit(key='user_or_ip', rate='500/m')
+@ratelimit(key='user_or_ip', rate='status=500/m')
 @login_required
 def bio(request):
     bio = Bio.objects.filter(user=request.user)
@@ -150,7 +143,7 @@ def bio_information_change(request):
 
             bio.objects.update(username=username,password=password,email=email,avatar=img)
 
-            return JsonResponse({'success'}, 200)
+            return JsonResponse({'success'}, status=200)
     else:
-        return JsonResponse({'error'},500)
+        return JsonResponse({'error'},status=500)
     

@@ -64,9 +64,9 @@ def forgot_password_verify(request,id):
                 forgot.save()
                 return redirect("change_password")
             else:
-                return JsonResponse({"error":'there are some error'},500)
+                return JsonResponse({"error":'there are some error'},status=500)
     else:
-        return JsonResponse({"error":'there are some error'},500)
+        return JsonResponse({"error":'there are some error'},status=500)
     return render(request, '/authentication/forgot_password/verify.html')
 
 @ratelimit(key='ip', rate='10/m')
@@ -85,5 +85,5 @@ def change_password(request,id):
 
             return redirect('login')
     else:
-        return JsonResponse({"error":'there are some error'},500)
+        return JsonResponse({"error":'there are some error'},status=500)
     

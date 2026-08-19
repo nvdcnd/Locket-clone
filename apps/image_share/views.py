@@ -9,7 +9,7 @@ from django.http.response import JsonResponse
 import base64
 
 # Create your views here.
-@ratelimit(key='user_or_ip', rate='200/m')
+@ratelimit(key='user_or_ip', rate='status=200/m')
 @login_required
 def image_create(request):
     bio = Bio.objects.filter(user=request.user).first()
@@ -27,11 +27,11 @@ def image_create(request):
             img = ContentFile(base64.b64decode(imgstr), name=f"uploaded_file.{ext}")
             new_image = Image.objects.create(image=img,text=text,image_type=Image_type.objects.get(name=share_type))
 
-            return JsonResponse({'success','đăng ảnh thành công'}, 200)
+            return JsonResponse({'success','đăng ảnh thành công'}, status=200)
     else:
-        return JsonResponse({'error','đăng ảnh thất bại'},500)
+        return JsonResponse({'error','đăng ảnh thất bại'},status=500)
 
-@ratelimit(key='user_or_ip', rate='500/m')
+@ratelimit(key='user_or_ip', rate='status=500/m')
 @login_required
 def image_list_infinity_scroll(request, last_page, offset):
     bio = Bio.objects.filter(user=request.user).first()
@@ -53,9 +53,9 @@ def image_list_infinity_scroll(request, last_page, offset):
         'images': results,
         'has_next': img_next,
         'last_page': results[-1]['create_at'] if results else None
-    }, 200)
+    }, status=200)
 
-@ratelimit(key='user_or_ip', rate='500/m')
+@ratelimit(key='user_or_ip', rate='status=500/m')
 @login_required
 def emojing_image(request, id):
     bio = Bio.objects.get(user=request.user)
@@ -65,15 +65,15 @@ def emojing_image(request, id):
         emoji = data.get('emoji')
         new_emoji_4_img = Image_emoji_share.objects.create(image=img,user=bio,emoji=Emoji_type.object.get(name=emoji))
 
-        return JsonResponse({'success':'sucessful'}, 200)
+        return JsonResponse({'success':'sucessful'}, status=200)
     else:
-        return JsonResponse({'error':'error'}, 500)
+        return JsonResponse({'error':'error'}, status=500)
 
 @login_required
 def image_delete(request, id):
     img = Image.objects.get(id=id,user__user_id = request.user.id)
     if img:
         img.delete()
-        return JsonResponse({'success':'image deleted'}, 200)
+        return JsonResponse({'success':'image deleted'}, status=200)
     else:
-        return JsonResponse({'error':'you can not delete this image'}, 500)
+        return JsonResponse({'error':'you can not delete this image'}, status=500)
