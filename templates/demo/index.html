@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+    <style>
+        body{
+            width: 100vw;
+            height: 100vh;
+            background-color: #121212;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content{
+            background-color: rgba(255, 184, 0, 0.08);
+            -webkit-backdrop-filter: blur(25px) saturate(200%);
+            backdrop-filter: blur(25px) saturate(200%);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 
+                0 20px 50px rgba(0, 0, 0, 0.5),
+                inset 0 1px 1px rgba(255, 255, 255, 0.4),
+                inset 0 -1px 2px rgba(255, 184, 0, 0.2);
+
+            color: #ffffff;
+            text-align: center;
+            
+            /* Hiệu ứng mượt mà khi tương tác */
+            transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1),
+                        box-shadow 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+            cursor: pointer;
+        }
+
+        .card{
+            position: relative;
+            width: 60%;
+            padding: 30px;
+            border-radius: 30px;
+            background-color: rgba(255, 184, 0, 0.08);
+            -webkit-backdrop-filter: blur(25px) saturate(200%);
+            backdrop-filter: blur(25px) saturate(200%);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 
+                0 20px 50px rgba(0, 0, 0, 0.5),
+                inset 0 1px 1px rgba(255, 255, 255, 0.4),
+                inset 0 -1px 2px rgba(255, 184, 0, 0.2);
+
+            color: #ffffff;
+            text-align: center;
+            
+            /* Hiệu ứng mượt mà khi tương tác */
+            transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1),
+                        box-shadow 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+            cursor: pointer;
+        }
+        
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50%;
+            border-radius: 30px 30px 0 0;
+            background: linear-gradient(
+                180deg, 
+                rgba(255, 255, 255, 0.25) 0%, 
+                rgba(255, 255, 255, 0) 100%
+            );
+            pointer-events: none;
+        }
+        .card:hover {
+            transform: scale(1.03) translateY(-5px);
+            box-shadow: 
+                0 30px 60px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.7),
+                inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+        }
+        .glow{
+            position: absolute;
+            width: 40%;
+            height: 40%;
+            background-color: #FFB800;
+            border-radius: 50%;
+            filter:blur(80px);
+            opacity: 0.6;
+            animation: pulse 4s ease-in-out infinite alternate;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1) translate(-20px, -20px); }
+            100% { transform: scale(1.2) translate(20px, 20px); }
+        }
+        .btn-primary{
+            background: #FFB800;
+            color: #000000;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 0.95rem;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(255, 184, 0, 0.4);
+            transition: all 0.2s ease;
+        }
+        .btn-primary:hover{
+            background-color: transparent;
+            border: solid 2px #FFB800;
+            color: #FFB800;
+        }
+        .mb3{
+            margin-bottom: 14px;
+            display: flex;
+            flex-direction: column;
+        }
+        .form-control{
+            width: 100%;
+            height: 38px;
+            padding: 0 14px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 184, 0, 0.5);
+            outline: none;
+            color: black;
+            font-size: 0.85rem;
+
+            /* Nền xám đen trong suốt tạo độ chìm */
+            background: rgba(255, 255, 255, 0.5);
+
+            /* Kỹ thuật tạo độ lõm: Bóng tối ở góc trên-trái, viền sáng mảnh ở góc dưới-phải */
+            box-shadow: 
+                        0 30px 60px rgba(0, 0, 0, 0.3),
+                        inset 0 1px 0 rgba(255, 184, 0, 0.7),
+                        inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+
+            transition: all 0.25s ease;
+        }
+        .form-control:focus{
+            border-color: rgba(255, 184, 0, 0.5);
+            background: rgba(255, 255, 255, 0.5);
+            box-shadow: 
+                inset 0 3px 6px rgba(0, 0, 0, 0.4),
+                0 0 8px rgba(255, 184, 0, 0.5);
+        }
+        .btn-google {
+            width: 100%;
+            height: 38px;
+            margin-top: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 19px;
+            font-weight: 500;
+            font-size: 0.8rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            backdrop-filter: blur(10px);
+            transition: all 0.2s ease;
+            }
+
+            .btn-google:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.35);
+            transform: translateY(-1px);
+            }
+
+            .btn-google svg {
+            width: 16px;
+            height: 16px;
+            }
+            .modal-header{
+                color: white;
+            }
+            .actual-file-input {
+            display: none;
+            }
+
+            /* 3. ĐÂY LÀ Ô CHÍNH CẦN SỬA: Thẻ Label giả lập ô input */
+            .file-input-wrapper {
+            width: 100%;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            overflow: hidden; /* Cần thiết để góc bo bên trong không bị thừa */
+            transition: all 0.2s ease;
+            
+            /* --- KỸ THUẬT TẠO HIỆU ỨNG CHÌM / LÕM XUỐNG --- */
+            
+            /* Nền xám đen sẫm màu hơn nền kính */
+            background: rgba(255, 255, 255, 0.4);
+            
+            /* Viền chìm tối màu */
+            border: 1px solid rgba(0, 0, 0, 0.4);
+            
+            /* Đổ bóng nội bộ (Inset) sẫm màu đổ từ góc trên-trái xuống */
+            box-shadow: 
+                    0 30px 60px rgba(0, 0, 0, 0.3),
+                    inset 0 1px 0 rgba(255, 184, 0, 0.7),
+                    inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+            }
+
+            /* Hiệu ứng khi bấm hoặc hover */
+            .file-input-wrapper:hover {
+                background: rgba(255, 255, 255, 0.5);
+                box-shadow: 
+                    inset 0 3px 6px rgba(0, 0, 0, 0.4),
+                    0 0 8px rgba(255, 184, 0, 0.5);
+                border-color: rgba(255, 184, 0, 0.4); /* Viền màu vàng Locket nhẹ */
+            }
+
+            /* 4. Thẻ Span "Choose File" (Phần màu trắng trong hình của bạn) */
+            .custom-file-button {
+            background: rgba(255, 255, 255, 0.6);
+            color: #000000;
+            height: 100%;
+            padding: 0 16px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            border-right: 1px solid rgba(0, 0, 0, 0.3); /* Viền chìm nhẹ */
+            box-shadow: inset 1px 1px 1px rgba(255, 255, 255, 0.6); /* Vệt sáng phản quang */
+            }
+
+            /* 5. Thẻ Span "No file chosen" (Phần sẫm màu bên phải) */
+            .file-chosen-text {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.8rem;
+            margin-left: 14px;
+            display: inline-block;
+            width: calc(100% - 130px); /* Đặt chiều rộng tối đa */
+            white-space: nowrap; /* Không xuống dòng */
+            overflow: hidden; /* Ẩn phần chữ thừa */
+            text-overflow: ellipsis; /* Thêm dấu "..." nếu tên file quá dài */
+            text-align: left;
+            }
+    </style>
+</head>
+<body>
+    <div class="glow">
+    </div>
+    <div class="card">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-lg">
+                    <h1>Hello</h1>
+                </div>
+                <div class="col-lg">
+                    <form>
+                        <div class="mb-3">
+                            <label class="text-start">Email</label>
+                            <input class="form-control" type="email">
+                        </div>
+                        <div class="mb-3">
+                            <label class="text-start">Password</label>
+                            <input class="form-control" type="password">
+                        </div>
+                        <div class="mb-3">
+                            <button class="btn btn-primary w-100">Sign in</button>
+                        </div>
+                    </form>
+                    <div style="background-color: #FFB800;height: 3px;width: 100%;"></div>
+                    <button type="button" class="btn-google" style="margin-top: 10px;margin-bottom: 10px;">
+                        <svg viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                        </svg>
+                        Sign in with Google
+                    </button>
+                    <p>Don't Have An Account? <a data-bs-toggle="modal" data-bs-target="#SignUpModal" style="color:#FFB800;text-decoration:underline;">Sign Up</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="SignUpModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+            <!--<div class="modal-header">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>-->
+            <div class="modal-body">
+                <h1>Sign Up</h1>
+                <br>
+                <form>
+                    <div class="row">
+                        <div class="col-lg">
+                            <div class="mb-3">
+                                <label class="text-start">Email</label>
+                                <input class="form-control" type="email">
+                            </div>
+                        </div>
+                        <div class="col-lg">
+                            <div class="mb-3">
+                                <label class="text-start">Username</label>
+                                <input class="form-control" type="text">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-lg">
+                            <div class="mb-3">
+                                <label class="text-start">Avatar</label>
+                                <label class="file-input-wrapper" for="avatar">
+                                    <!-- Ẩn ô input file thật đi -->
+                                    <input type="file" id="avatar" class="actual-file-input">
+                                    <!-- Phía bên trái (Nút "Choose File" giả lập) -->
+                                    <span class="custom-file-button">Choose File</span>
+                                    <!-- Phía bên phải (Chữ hiển thị tên file giả lập) -->
+                                    <span class="file-chosen-text" id="file-name">No file chosen</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-lg">
+                            <div class="mb-3">
+                                <label class="text-start">Password</label>
+                                <input class="form-control" type="password">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <button class="btn btn-primary w-100">Sign in</button>
+                    </div>
+                </form>
+            </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const fileInput = document.getElementById('avatar');
+        const fileNameDisplay = document.getElementById('file-name');
+
+        fileInput.addEventListener('change', function() {
+        if (this.files && this.files.length > 0) {
+            // Lấy tên file đầu tiên
+            fileNameDisplay.textContent = this.files[0].name;
+        } else {
+            fileNameDisplay.textContent = 'No file chosen';
+        }
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" integrity="sha384-G/EV+4j2dNv+tEPo3++6LCgdCROaejBqfUeNjuKAiuXbjrxilcCdDz6ZAVfHWe1Y" crossorigin="anonymous"></script>
+</body>
+</html>
