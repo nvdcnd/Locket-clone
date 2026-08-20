@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Locket Web App</title>
+    <!-- Bootstrap CSS & Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.css">
+    
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: #000000;
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden;
+        }
+
+        /* Glassmorphism Reusable Style */
+        .glass-panel {
+            background-color: rgba(255, 184, 0, 0.08);
+            -webkit-backdrop-filter: blur(25px) saturate(200%);
+            backdrop-filter: blur(25px) saturate(200%);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+        }
+
+        /* Topbar Floating Glassmorphism */
+        .topbar {
+            position: fixed;
+            top: 20px;
+            left: 0;
+            width: 100vw;
+            z-index: 1000;
+            padding: 0 20px;
+        }
+
+        .topbar-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+
+        .topbar-left, .topbar-right {
+            flex: 1;
+            display: flex;
+            align-items: center;
+        }
+
+        .topbar-left { justify-content: flex-start; }
+        .topbar-right { justify-content: flex-end; }
+        .topbar-center { display: flex; justify-content: center; }
+
+        .btn-glass-circle {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .dropdown-toggle-custom {
+            height: 42px;
+            padding: 0 20px;
+            border-radius: 21px;
+            color: #ffffff;
+            font-weight: 600;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+
+        .desktop-sidebar { display: none; }
+
+        /* MAIN CONTAINER */
+        .app-layout {
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .view-feed {
+            height: 100vh;
+            height: 100dvh;
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .card-item {
+            height: 100vh;
+            height: 100dvh;
+            width: 100%;
+            scroll-snap-align: start;
+            scroll-snap-stop: always;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 80px 20px 100px 20px;
+        }
+
+        /* CAMERA & PREVIEW CANVAS CONTAINER */
+        .camera-container-box {
+            width: 100%;
+            max-width: 380px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .camera-frame, .preview-canvas-wrapper {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            border-radius: 45px;
+            background: #111;
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .camera-video, .preview-canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .camera-video { transform: scaleX(-1); }
+
+        .preview-caption-input {
+            position: absolute;
+            bottom: 18px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 85%;
+            padding: 8px 18px;
+            border-radius: 25px;
+            background: rgba(0, 0, 0, 0.55);
+            -webkit-backdrop-filter: blur(15px);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            color: #ffffff;
+            font-size: 0.95rem;
+            font-weight: 500;
+            text-align: center;
+            outline: none;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .preview-caption-input::placeholder { color: rgba(255, 255, 255, 0.6); }
+
+        .camera-actions {
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .btn-shutter {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            border: 4px solid #FFB800;
+            background: transparent;
+            box-shadow: 0 0 20px rgba(255, 184, 0, 0.4);
+            transition: all 0.2s ease;
+            position: relative;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-shutter::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 54px; height: 54px;
+            background: #FFB800;
+            border-radius: 50%;
+            transition: all 0.2s ease;
+        }
+
+        .btn-shutter:active { transform: scale(0.92); }
+
+        .btn-shutter.mode-send {
+            background: #FFB800;
+            border-color: #FFB800;
+        }
+        .btn-shutter.mode-send::after { display: none; }
+        .btn-shutter.mode-send i {
+            font-size: 1.8rem;
+            color: #000;
+            z-index: 2;
+        }
+
+        /* FEED POST LAYOUT */
+        .feed-post {
+            width: 100%;
+            max-width: 380px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .feed-img-wrapper {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            border-radius: 45px;
+            overflow: hidden;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .feed-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .feed-overlay-caption {
+            position: absolute;
+            bottom: 18px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: max-content;
+            max-width: 85%;
+            padding: 8px 18px;
+            border-radius: 25px;
+            background: rgba(0, 0, 0, 0.55);
+            -webkit-backdrop-filter: blur(15px);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+            font-size: 0.95rem;
+            font-weight: 500;
+            text-align: center;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .feed-user-info {
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .user-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 1.5px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .user-meta {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.9rem;
+        }
+
+        .user-name { font-weight: 700; color: #ffffff; }
+        .post-time { color: rgba(255, 255, 255, 0.6); font-size: 0.8rem; }
+
+        /* Emoji Reactions Bar */
+        .feed-emoji-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            width: 100%;
+            max-width: 320px;
+            padding: 6px 16px;
+            margin-top: 10px;
+            margin-bottom: 10px;
+            border-radius: 25px;
+            background: rgba(255, 255, 255, 0.08);
+            -webkit-backdrop-filter: blur(15px);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .emoji-btn {
+            background: transparent;
+            border: none;
+            font-size: 1.3rem;
+            cursor: pointer;
+            transition: transform 0.15s ease;
+            line-height: 1;
+        }
+
+        .emoji-btn:hover, .emoji-btn:active {
+            transform: scale(1.4);
+        }
+
+        /* Reply Input Bar */
+        .feed-reply-bar {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            -webkit-backdrop-filter: blur(15px);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 25px;
+            padding: 4px 6px 4px 16px;
+        }
+
+        .reply-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #ffffff;
+            font-size: 0.88rem;
+        }
+
+        .reply-input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .btn-reply-send {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            background: #FFB800;
+            color: #000000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.15s ease;
+            font-size: 0.9rem;
+        }
+
+        .btn-reply-send:active { transform: scale(0.9); }
+
+        /* CARD END */
+        .end-card-box {
+            width: 100%;
+            max-width: 380px;
+            aspect-ratio: 1 / 1;
+            border-radius: 45px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 30px;
+        }
+
+        /* POP-UP TOAST */
+        .toast-notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translate(-50%, -150%);
+            z-index: 2000;
+            padding: 12px 24px;
+            border-radius: 30px;
+            background: rgba(20, 20, 20, 0.9);
+            -webkit-backdrop-filter: blur(20px);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 184, 0, 0.5);
+            color: #fff;
+            font-weight: 600;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: transform 0.5s cubic-bezier(0.1, 1, 0.1, 1);
+        }
+
+        .toast-notification.show { transform: translate(-50%, 0); }
+
+        /* FAB BUTTON GÓC DƯỚI BÊN PHẢI MOBILE */
+        .mobile-fab-btn {
+            position: fixed;
+            bottom: 25px;
+            right: 20px;
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            z-index: 1040;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            color: #FFB800;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .mobile-fab-btn:active { transform: scale(0.9); }
+
+        /* BOTTOM NAVBAR MOBILE (Triệu hồi qua FAB) */
+        .mobile-navbar {
+            position: fixed;
+            bottom: 25px;
+            left: 0;
+            width: 100%;
+            z-index: 1050;
+            display: flex;
+            justify-content: center;
+            pointer-events: none;
+        }
+
+        .navbar-body {
+            pointer-events: auto;
+            width: 65%;
+            max-width: 300px;
+            height: 65px;
+            border-radius: 35px;
+            transition: transform 0.35s cubic-bezier(0.1, 1, 0.1, 1), opacity 0.3s ease;
+            
+            /* Mặc định ẩn hoàn toàn xuống phía dưới */
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(120%);
+        }
+
+        /* Class kích hoạt khi bấm FAB */
+        .navbar-body.active {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0);
+        }
+
+        .navbar-items {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+            list-style: none;
+        }
+
+        .navbar-items li i { font-size: 1.5rem; color: #ffffff; cursor: pointer; }
+
+        /* RESPONSIVE MÀN HÌNH LỚN */
+        @media (min-width: 992px) {
+            .mobile-navbar, .mobile-fab-btn { display: none !important; }
+            .desktop-sidebar {
+                display: flex; flex-direction: column;
+                position: fixed; top: 0; left: 0;
+                width: 250px; height: 100vh;
+                padding: 100px 20px 30px 30px; z-index: 900;
+            }
+            .sidebar-menu {
+                list-style: none; padding: 0; margin-top: 20px;
+                display: flex; flex-direction: column; gap: 15px;
+            }
+            .sidebar-link {
+                display: flex; align-items: center; gap: 15px;
+                color: #fff; text-decoration: none; font-size: 1.1rem;
+                padding: 12px 20px; border-radius: 20px; transition: all 0.2s ease;
+            }
+            .sidebar-link:hover, .sidebar-link.active {
+                background: rgba(255, 184, 0, 0.15); color: #FFB800;
+            }
+            .app-layout {
+                margin-left: 250px; width: calc(100vw - 250px);
+                display: flex; justify-content: center; align-items: center; padding-top: 80px;
+            }
+            .desktop-container {
+                display: flex; width: 100%; max-width: 900px;
+                height: calc(100vh - 100px); gap: 40px;
+            }
+            .left-column {
+                flex: 1; display: flex; flex-direction: column;
+                align-items: center; justify-content: center;
+            }
+            .right-column {
+                flex: 1; height: 100%; overflow-y: auto; padding-right: 10px; scroll-snap-type: none;
+            }
+            .right-column::-webkit-scrollbar { width: 6px; }
+            .right-column::-webkit-scrollbar-thumb {
+                background: rgba(255, 255, 255, 0.2); border-radius: 10px;
+            }
+            .view-feed { height: auto; overflow-y: visible; scroll-snap-type: none; }
+            .card-item { height: auto; padding: 0 0 40px 0; scroll-snap-align: none; }
+            #camera-card { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Input file ẩn -->
+    <input type="file" id="file-input" accept="image/*" style="display: none;">
+
+    <!-- Toast notification -->
+    <div id="toast-popover" class="toast-notification">
+        <i id="toast-icon" class="bi bi-check-circle-fill text-warning fs-5"></i>
+        <span id="toast-message">Đăng ảnh thành công!</span>
+    </div>
+
+    <!-- Topbar -->
+    <header class="topbar">
+        <div class="topbar-content">
+            <div class="topbar-left">
+                <div class="btn-glass-circle glass-panel">
+                    <i class="bi bi-person-fill"></i>
+                </div>
+            </div>
+            <div class="topbar-center">
+                <div class="dropdown">
+                    <a class="dropdown-toggle-custom glass-panel" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-people-fill text-warning"></i> Bạn bè
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end mt-2 rounded-4 border-secondary">
+                        <li><a class="dropdown-item active" href="#">Tất cả bạn bè</a></li>
+                        <li><a class="dropdown-item" href="#">Người yêu 💛</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#"><i class="bi bi-person-plus me-2"></i>Thêm bạn mới</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="topbar-right">
+                <div class="btn-glass-circle glass-panel">
+                    <i class="bi bi-lightning-fill text-warning"></i>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Sidebar Desktop -->
+    <aside class="desktop-sidebar">
+        <ul class="sidebar-menu">
+            <li><a href="#" class="sidebar-link active"><i class="bi bi-camera-fill"></i> Camera</a></li>
+            <li><a href="#" class="sidebar-link"><i class="bi bi-grid-fill"></i> Feed Ảnh</a></li>
+            <li><a href="#" class="sidebar-link"><i class="bi bi-chat-fill"></i> Tin nhắn</a></li>
+            <li><a href="#" class="sidebar-link"><i class="bi bi-gear-fill"></i> Cài đặt</a></li>
+        </ul>
+    </aside>
+
+    <!-- Main Container -->
+    <div class="app-layout">
+        <div class="desktop-container">
+            
+            <!-- Desktop Camera Column -->
+            <div class="left-column d-none d-lg-flex">
+                <div class="camera-container-box">
+                    <div class="camera-frame position-relative" id="desktop-cam-frame">
+                        <video id="webcam-desktop" class="camera-video" autoplay playsinline muted></video>
+                        <button id="desktop-cam-toggle" class="btn-glass-circle glass-panel position-absolute top-0 end-0 m-3 border-0" title="Tắt/Mở Camera">
+                            <i class="bi bi-camera-video-fill text-warning"></i>
+                        </button>
+                    </div>
+
+                    <div class="preview-canvas-wrapper d-none" id="desktop-preview-frame">
+                        <canvas id="desktop-canvas" class="preview-canvas"></canvas>
+                        <input type="text" class="preview-caption-input" placeholder="Viết dòng trạng thái..." id="desktop-caption-input">
+                    </div>
+
+                    <div class="camera-actions">
+                        <div class="btn-glass-circle glass-panel upload-btn-trigger"><i class="bi bi-images"></i></div>
+                        <button class="btn-shutter shutter-trigger" id="desktop-shutter-btn"></button>
+                        <div class="btn-glass-circle glass-panel action-cancel-btn" id="desktop-cancel-btn"><i class="bi bi-arrow-repeat"></i></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Feed Column -->
+            <div class="right-column">
+                <main class="view-feed" id="main-feed">
+                    
+                    <!-- Mobile Camera Card 0 -->
+                    <section class="card-item d-lg-none" id="camera-card">
+                        <div class="camera-container-box">
+                            <div class="camera-frame" id="mobile-cam-frame">
+                                <video id="webcam-mobile" class="camera-video" autoplay playsinline muted></video>
+                            </div>
+
+                            <div class="preview-canvas-wrapper d-none" id="mobile-preview-frame">
+                                <canvas id="mobile-canvas" class="preview-canvas"></canvas>
+                                <input type="text" class="preview-caption-input" placeholder="Viết dòng trạng thái..." id="mobile-caption-input">
+                            </div>
+
+                            <div class="camera-actions">
+                                <div class="btn-glass-circle glass-panel upload-btn-trigger"><i class="bi bi-images"></i></div>
+                                <button class="btn-shutter shutter-trigger" id="mobile-shutter-btn"></button>
+                                <div class="btn-glass-circle glass-panel action-cancel-btn" id="mobile-cancel-btn"><i class="bi bi-arrow-repeat"></i></div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- CONTAINER CHỨA FEED POSTS -->
+                    <div id="feed-list">
+                        <!-- Render 10 ảnh đầu tiên từ Server Django -->
+                        {% for img in images %}
+                        <section class="card-item">
+                            <div class="feed-post">
+                                
+                                <!-- Khung Ảnh -->
+                                <div class="feed-img-wrapper">
+                                    <img src="{{ img.image.url }}" class="feed-img" alt="Feed image">
+                                    {% if img.text %}
+                                    <div class="feed-overlay-caption">{{ img.text }}</div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Thông tin tác giả -->
+                                <div class="feed-user-info">
+                                    <img src="{{ img.user.avatar.url|default:'https://picsum.photos/100/100' }}" class="user-avatar" alt="Avatar">
+                                    <div class="user-meta">
+                                        <span class="user-name">{{ img.user.user.username }}</span>
+                                        <span class="post-time">• {{ img.create_at|date:"H:i, d/m/Y" }}</span>
+                                    </div>
+                                </div>
+
+                                <!-- Thanh Emoji Thả Cảm Xúc -->
+                                <div class="feed-emoji-bar">
+                                    <button class="emoji-btn" onclick="sendEmoji('{{ img.id }}', '💛')">💛</button>
+                                    <button class="emoji-btn" onclick="sendEmoji('{{ img.id }}', '🔥')">🔥</button>
+                                    <button class="emoji-btn" onclick="sendEmoji('{{ img.id }}', '😂')">😂</button>
+                                    <button class="emoji-btn" onclick="sendEmoji('{{ img.id }}', '😮')">😮</button>
+                                    <button class="emoji-btn" onclick="sendEmoji('{{ img.id }}', '😭')">😭</button>
+                                </div>
+
+                                <!-- Thanh Reply Tin Nhắn Nhanh -->
+                                <div class="feed-reply-bar">
+                                    <input type="text" class="reply-input" placeholder="Gửi tin nhắn cho {{ img.user.user.username }}..." id="reply-input-{{ img.id }}" onkeypress="handleReplyKeypress(event, '{{ img.user.user.id }}', '{{ img.id }}')">
+                                    <button class="btn-reply-send" onclick="sendReplyMessage('{{ img.user.user.id }}', '{{ img.id }}')">
+                                        <i class="bi bi-send-fill"></i>
+                                    </button>
+                                </div>
+
+                            </div>
+                        </section>
+                        {% endfor %}
+                    </div>
+
+                    <!-- CARD END -->
+                    <section class="card-item" id="end-card">
+                        <div class="end-card-box glass-panel">
+                            <i class="bi bi-check2-circle text-warning display-3 mb-3"></i>
+                            <h5 class="fw-bold mb-2">Mọi thứ đã xong!</h5>
+                            <p class="text-secondary fs-6 mb-0">M đã bắt kịp tất cả khoảnh khắc mới nhất của bạn bè rồi đó ✨</p>
+                        </div>
+                    </section>
+
+                </main>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- FAB BUTTON BẤM MỞ BOTTOM NAVBAR -->
+    <div class="mobile-fab-btn glass-panel" id="fab-nav-trigger" title="Menu">
+        <i class="bi bi-grid-fill"></i>
+    </div>
+
+    <!-- Bottom Nav (Mobile) -->
+    <div class="mobile-navbar">
+        <div class="navbar-body glass-panel" id="bottom-nav">
+            <ul class="navbar-items">
+                <li><i class="bi bi-grid-fill"></i></li>
+                <li><i class="bi bi-camera-fill text-warning" id="nav-camera-btn"></i></li>
+                <li><i class="bi bi-chat-fill"></i></li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- App State & JS Logic -->
+    <!-- App State & JS Logic -->
+<script>
+    // Xử lý biến Jinja2 an toàn bằng String, không làm gãy JS khi mở file thô
+    let rawLastPage = "{{ last_page|default:'' }}";
+    let rawHasNext = "{{ has_next|yesno:'true,false' }}";
+
+    let lastPage = rawLastPage.includes("{{") ? "" : rawLastPage;
+    let hasNext = rawHasNext.includes("{{") ? false : (rawHasNext === "true");
+
+    let isFetching = false;
+    let currentStream = null;
+    let isPreviewMode = false;
+    let capturedBase64Data = null;
+
+    const fileInput = document.getElementById('file-input');
+    const toastPopover = document.getElementById('toast-popover');
+    const toastMessage = document.getElementById('toast-message');
+    const toastIcon = document.getElementById('toast-icon');
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function showToast(message, isSuccess = true) {
+        if (!toastMessage || !toastIcon || !toastPopover) return;
+        toastMessage.textContent = message;
+        toastIcon.className = isSuccess ? "bi bi-check-circle-fill text-warning fs-5" : "bi bi-x-circle-fill text-danger fs-5";
+        toastPopover.classList.add('show');
+        setTimeout(() => toastPopover.classList.remove('show'), 5000);
+    }
+
+    // ----------------------------------------------------
+    // 1. LOGIC BẬT/TẮT BOTTOM NAVBAR BẰNG FAB BUTTON
+    // ----------------------------------------------------
+    const fabBtn = document.getElementById('fab-nav-trigger');
+    const bottomNav = document.getElementById('bottom-nav');
+    const navCameraBtn = document.getElementById('nav-camera-btn');
+
+    if (fabBtn && bottomNav) {
+        fabBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            bottomNav.classList.toggle('active');
+        });
+
+        // Bấm ra ngoài đóng Navbar
+        document.addEventListener('click', (e) => {
+            if (!bottomNav.contains(e.target) && !fabBtn.contains(e.target)) {
+                bottomNav.classList.remove('active');
+            }
+        });
+    }
+
+    if (navCameraBtn) {
+        navCameraBtn.addEventListener('click', () => {
+            bottomNav?.classList.remove('active');
+            document.getElementById('main-feed')?.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+    }
+
+    // ----------------------------------------------------
+    // 2. WEBCAM LOGIC
+    // ----------------------------------------------------
+    async function startCamera(videoElement) {
+        if (!videoElement) return;
+        try {
+            if (!currentStream || !currentStream.active) {
+                currentStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "user", aspectRatio: 1 }, 
+                    audio: false 
+                });
+            }
+            videoElement.srcObject = currentStream;
+            await videoElement.play();
+        } catch (err) {
+            console.warn("Chưa cấp quyền webcam hoặc mở qua file://:", err);
+        }
+    }
+
+    function stopCamera() {
+        if (currentStream) {
+            currentStream.getTracks().forEach(track => track.stop());
+            currentStream = null;
+        }
+    }
+
+    // ----------------------------------------------------
+    // 3. PREVIEW MODE
+    // ----------------------------------------------------
+    function enterPreviewMode(base64Image) {
+        isPreviewMode = true;
+        capturedBase64Data = base64Image;
+
+        const isDesktop = window.innerWidth >= 992;
+        const camFrame = document.getElementById(isDesktop ? 'desktop-cam-frame' : 'mobile-cam-frame');
+        const previewFrame = document.getElementById(isDesktop ? 'desktop-preview-frame' : 'mobile-preview-frame');
+        const canvas = document.getElementById(isDesktop ? 'desktop-canvas' : 'mobile-canvas');
+        const shutterBtn = document.getElementById(isDesktop ? 'desktop-shutter-btn' : 'mobile-shutter-btn');
+        const cancelBtn = document.getElementById(isDesktop ? 'desktop-cancel-btn' : 'mobile-cancel-btn');
+
+        const img = new Image();
+        img.onload = () => {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+        };
+        img.src = base64Image;
+
+        camFrame?.classList.add('d-none');
+        previewFrame?.classList.remove('d-none');
+
+        if (shutterBtn) {
+            shutterBtn.classList.add('mode-send');
+            shutterBtn.innerHTML = '<i class="bi bi-send-fill"></i>';
+        }
+        if (cancelBtn) {
+            cancelBtn.innerHTML = '<i class="bi bi-x-lg text-danger fs-5"></i>';
+        }
+    }
+
+    function exitPreviewMode() {
+        isPreviewMode = false;
+        capturedBase64Data = null;
+
+        const isDesktop = window.innerWidth >= 992;
+        const camFrame = document.getElementById(isDesktop ? 'desktop-cam-frame' : 'mobile-cam-frame');
+        const previewFrame = document.getElementById(isDesktop ? 'desktop-preview-frame' : 'mobile-preview-frame');
+        const shutterBtn = document.getElementById(isDesktop ? 'desktop-shutter-btn' : 'mobile-shutter-btn');
+        const cancelBtn = document.getElementById(isDesktop ? 'desktop-cancel-btn' : 'mobile-cancel-btn');
+        const captionInput = document.getElementById(isDesktop ? 'desktop-caption-input' : 'mobile-caption-input');
+
+        if(captionInput) captionInput.value = '';
+
+        camFrame?.classList.remove('d-none');
+        previewFrame?.classList.add('d-none');
+
+        if (shutterBtn) {
+            shutterBtn.classList.remove('mode-send');
+            shutterBtn.innerHTML = '';
+        }
+        if (cancelBtn) {
+            cancelBtn.innerHTML = '<i class="bi bi-arrow-repeat"></i>';
+        }
+
+        const activeVideo = isDesktop ? document.getElementById('webcam-desktop') : document.getElementById('webcam-mobile');
+        startCamera(activeVideo);
+    }
+
+    // ----------------------------------------------------
+    // 4. CAPTURE & UPLOAD TRIGGER
+    // ----------------------------------------------------
+    document.querySelectorAll('.shutter-trigger').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (!isPreviewMode) {
+                const isDesktop = window.innerWidth >= 992;
+                const activeVideo = isDesktop ? document.getElementById('webcam-desktop') : document.getElementById('webcam-mobile');
+
+                if (!activeVideo || !activeVideo.srcObject) {
+                    alert("Camera chưa sẵn sàng (hoặc đang mở file HTML thô)!");
+                    return;
+                }
+
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = activeVideo.videoWidth || 400;
+                tempCanvas.height = activeVideo.videoHeight || 400;
+                const ctx = tempCanvas.getContext('2d');
+
+                ctx.translate(tempCanvas.width, 0);
+                ctx.scale(-1, 1);
+                ctx.drawImage(activeVideo, 0, 0, tempCanvas.width, tempCanvas.height);
+
+                enterPreviewMode(tempCanvas.toDataURL('image/jpeg', 0.9));
+            } else {
+                handleSendPost();
+            }
+        });
+    });
+
+    document.querySelectorAll('.upload-btn-trigger').forEach(btn => {
+        btn.addEventListener('click', () => fileInput?.click());
+    });
+
+    fileInput?.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => enterPreviewMode(event.target.result);
+        reader.readAsDataURL(file);
+    });
+
+    document.querySelectorAll('.action-cancel-btn').forEach(btn => {
+        btn.addEventListener('click', () => { if (isPreviewMode) exitPreviewMode(); });
+    });
+
+    // ----------------------------------------------------
+    // 5. API ĐĂNG ẢNH MỚI (/image/create)
+    // ----------------------------------------------------
+    function handleSendPost() {
+        if (!capturedBase64Data) return;
+
+        const isDesktop = window.innerWidth >= 992;
+        const captionInput = document.getElementById(isDesktop ? 'desktop-caption-input' : 'mobile-caption-input');
+        const captionText = captionInput ? captionInput.value : '';
+
+        const payloadData = { image: capturedBase64Data, text: captionText };
+
+        exitPreviewMode();
+        
+        if (!isDesktop) {
+            document.getElementById('main-feed')?.scrollTo({
+                top: window.innerHeight,
+                behavior: 'smooth'
+            });
+        }
+
+        uploadImageInBackground(payloadData);
+    }
+
+    async function uploadImageInBackground(payload) {
+        try {
+            const response = await fetch('/image/create', { 
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const resData = await response.json();
+
+            if (response.ok) {
+                showToast(resData.success || "Đã đăng khoảnh khắc mới! 🌟", true);
+                location.reload();
+            } else {
+                showToast(resData.error || "Gửi ảnh thất bại!", false);
+            }
+        } catch (err) {
+            console.error("Async Upload Error:", err);
+            showToast("Lỗi kết nối máy chủ!", false);
+        }
+    }
+
+    // ----------------------------------------------------
+    // 6. API THẢ EMOJI (/image/<int:id>/emoji)
+    // ----------------------------------------------------
+    async function sendEmoji(imageId, emojiChar) {
+        try {
+            const response = await fetch(`/image/${imageId}/emoji`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ emoji: emojiChar })
+            });
+
+            const resData = await response.json();
+            if (response.ok) {
+                showToast(`Đã thả ${emojiChar} thành công!`, true);
+            } else {
+                showToast("Không thể thả cảm xúc!", false);
+            }
+        } catch (err) {
+            console.error("Lỗi khi thả emoji:", err);
+            showToast("Lỗi kết nối máy chủ!", false);
+        }
+    }
+
+    // ----------------------------------------------------
+    // 7. API REPLY MSG (/chat/to/<int:receiver_id>/reply/image/<int:img_id>)
+    // ----------------------------------------------------
+    function handleReplyKeypress(event, receiverId, imgId) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            sendReplyMessage(receiverId, imgId);
+        }
+    }
+
+    async function sendReplyMessage(receiverId, imgId) {
+        const inputElem = document.getElementById(`reply-input-${imgId}`);
+        if (!inputElem) return;
+
+        const messageText = inputElem.value.trim();
+        if (!messageText) return;
+
+        try {
+            const response = await fetch(`/chat/to/${receiverId}/reply/image/${imgId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ message: messageText })
+            });
+
+            const resData = await response.json();
+            if (response.ok) {
+                showToast("Đã gửi tin nhắn!", true);
+                inputElem.value = '';
+            } else {
+                showToast("Không thể gửi tin nhắn!", false);
+            }
+        } catch (err) {
+            console.error("Lỗi gửi tin nhắn:", err);
+            showToast("Lỗi kết nối máy chủ!", false);
+        }
+    }
+
+    // ----------------------------------------------------
+    // 8. INFINITE SCROLL FETCH API (/image/fetch/<last_page>/10/)
+    // ----------------------------------------------------
+    async function fetchNextFeedPage() {
+        if (!hasNext || isFetching) return;
+        isFetching = true;
+
+        try {
+            const response = await fetch(`/image/fetch/${lastPage}/10/`);
+            const data = await response.json();
+
+            if (response.ok) {
+                hasNext = data.has_next;
+                lastPage = data.last_page;
+                appendFeedPosts(data.images);
+            }
+        } catch (err) {
+            console.error("Lỗi Infinite Scroll:", err);
+        } finally {
+            isFetching = false;
+        }
+    }
+
+    function appendFeedPosts(posts) {
+        const feedContainer = document.getElementById('feed-list');
+        if (!feedContainer || !Array.isArray(posts)) return;
+
+        const htmlContent = posts.map(post => `
+            <section class="card-item">
+                <div class="feed-post">
+                    <div class="feed-img-wrapper">
+                        <img src="${post.image_url}" class="feed-img" alt="Feed image">
+                        ${post.text ? `<div class="feed-overlay-caption">${post.text}</div>` : ''}
+                    </div>
+
+                    <div class="feed-user-info">
+                        <img src="${post.avatar_url || 'https://picsum.photos/100/100'}" class="user-avatar" alt="Avatar">
+                        <div class="user-meta">
+                            <span class="user-name">${post.creater || 'User'}</span>
+                            <span class="post-time">• ${post.create_at || ''}</span>
+                        </div>
+                    </div>
+
+                    <div class="feed-emoji-bar">
+                        <button class="emoji-btn" onclick="sendEmoji('${post.id}', '💛')">💛</button>
+                        <button class="emoji-btn" onclick="sendEmoji('${post.id}', '🔥')">🔥</button>
+                        <button class="emoji-btn" onclick="sendEmoji('${post.id}', '😂')">😂</button>
+                        <button class="emoji-btn" onclick="sendEmoji('${post.id}', '😮')">😮</button>
+                        <button class="emoji-btn" onclick="sendEmoji('${post.id}', '😭')">😭</button>
+                    </div>
+
+                    <div class="feed-reply-bar">
+                        <input type="text" class="reply-input" placeholder="Gửi tin nhắn..." id="reply-input-${post.id}" onkeypress="handleReplyKeypress(event, '${post.creater}', '${post.id}')">
+                        <button class="btn-reply-send" onclick="sendReplyMessage('${post.creater}', '${post.id}')">
+                            <i class="bi bi-send-fill"></i>
+                        </button>
+                    </div>
+                </div>
+            </section>
+        `).join('');
+
+        feedContainer.insertAdjacentHTML('beforeend', htmlContent);
+    }
+
+    // ----------------------------------------------------
+    // 9. OBSERVERS
+    // ----------------------------------------------------
+    const endCard = document.getElementById('end-card');
+    const mainScrollContainer = document.getElementById('main-feed');
+
+    if (endCard && mainScrollContainer) {
+        const scrollObserver = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting && hasNext) {
+                    fetchNextFeedPage();
+                }
+            });
+        }, { root: mainScrollContainer, threshold: 0.2 });
+
+        scrollObserver.observe(endCard);
+    }
+
+    const cameraCard = document.getElementById('camera-card');
+    const mobileVideo = document.getElementById('webcam-mobile');
+
+    if (cameraCard && mainScrollContainer) {
+        const camObserver = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    if (!isPreviewMode) startCamera(mobileVideo);
+                } else {
+                    stopCamera();
+                }
+            });
+        }, { root: mainScrollContainer, threshold: 0.5 });
+
+        camObserver.observe(cameraCard);
+    }
+
+    const desktopVideo = document.getElementById('webcam-desktop');
+    const desktopCamBtn = document.getElementById('desktop-cam-toggle');
+    let isDesktopCamOn = true;
+
+    if (window.innerWidth >= 992) {
+        startCamera(desktopVideo);
+    }
+
+    desktopCamBtn?.addEventListener('click', () => {
+        const icon = desktopCamBtn.querySelector('i');
+        if (isDesktopCamOn) {
+            stopCamera();
+            if (desktopVideo) desktopVideo.srcObject = null;
+            if (icon) icon.className = 'bi bi-camera-video-off-fill text-danger';
+            isDesktopCamOn = false;
+        } else {
+            startCamera(desktopVideo);
+            if (icon) icon.className = 'bi bi-camera-video-fill text-warning';
+            isDesktopCamOn = true;
+        }
+    });
+</script>
+</body>
+</html>
