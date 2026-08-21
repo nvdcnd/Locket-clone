@@ -692,7 +692,7 @@
             <div class="chat-list">
                 {% if chat_lists %}
                     {% for chat in chat_lists %}
-                        {% if chat.user1.user.id = request.user.id %}
+                        {% if chat.user1.user.id == request.user.id %}
                             <div class='card' id={{chat.id}}>
                                 <div class='row pd'>
                                     <div class="col-2">

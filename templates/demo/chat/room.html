@@ -2,11 +2,25 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Locket Web App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
+    <title>Locket Chat</title>
     <!-- Bootstrap CSS & Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.css">
+
+    <!--
+    ============================================================
+    PHÒNG CHAT — cần view `room()` truyền các biến context sau:
+      room_id                   : id phòng chat
+      my_bio_id                 : Bio.id của người đang đăng nhập
+      receiver                  : Bio của người còn lại (receiver.user.username, receiver.avatar)
+      receiver_user_id          : User.id của người còn lại (dùng cho endpoint /chat/to/<id>/)
+      receiver_last_read_msg_id : id tin nhắn cuối người kia đã đọc (hiện "Đã xem")
+      chat_messages             : list Messages (cũ -> mới)
+    Mở file trực tiếp trên trình duyệt (không qua Django) sẽ tự chạy
+    chế độ xem thử với dữ liệu mẫu.
+    ============================================================
+    -->
 
     <style>
         * {
@@ -31,36 +45,10 @@
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.3);
         }
 
-        /* Topbar Floating Glassmorphism */
-        .topbar {
-            position: fixed;
-            top: 20px;
-            left: 0;
-            width: 100vw;
-            z-index: 1000;
-            padding: 0 20px;
-        }
-
-        .topbar-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            width: 100%;
-        }
-
-        .topbar-left, .topbar-right {
-            flex: 1;
-            display: flex;
-            align-items: center;
-        }
-
-        .topbar-left { justify-content: flex-start; }
-        .topbar-right { justify-content: flex-end; }
-        .topbar-center { display: flex; justify-content: center; }
-
         .btn-glass-circle {
             width: 44px;
             height: 44px;
+            min-width: 44px;
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -69,312 +57,422 @@
             color: #fff;
             cursor: pointer;
             transition: all 0.2s ease;
-        }
-
-        .dropdown-toggle-custom {
-            height: 42px;
-            padding: 0 20px;
-            border-radius: 21px;
-            color: #ffffff;
-            font-weight: 600;
-            font-size: 0.9rem;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            transition: all 0.2s ease;
             text-decoration: none;
         }
 
+        .btn-glass-circle:hover { color: #FFB800; }
+
         .desktop-sidebar { display: none; }
 
-        /* MAIN CONTAINER */
+        /* ===================== KHUNG CHÍNH ===================== */
         .app-layout {
             width: 100%;
             height: 100vh;
-            display:block;
+            height: 100dvh;
         }
 
-        .view-feed {
-            height: 100vh;
-            height: 100dvh;
-            overflow-y: scroll;
-            scroll-snap-type: y mandatory;
+        .chat-shell {
+            position: relative;
+            height: 100%;
+            max-width: 760px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 14px 12px;
+        }
+
+        /* ===================== TOPBAR PHÒNG CHAT ===================== */
+        .chat-topbar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            border-radius: 32px;
+            flex-shrink: 0;
+        }
+
+        .peer-info {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+        }
+
+        .peer-avatar {
+            width: 42px;
+            height: 42px;
+            min-width: 42px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid rgba(255, 184, 0, 0.6);
+        }
+
+        .peer-initial {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 184, 0, 0.18);
+            color: #FFB800;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .peer-meta { min-width: 0; }
+
+        .peer-name {
+            font-weight: 700;
+            font-size: 1.02rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .peer-status {
+            font-size: 0.74rem;
+            color: #FFB800;
+            height: 1em;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .peer-status.show { opacity: 1; }
+
+        .peer-status .typing-text::after {
+            content: '';
+            animation: ellipsis 1.2s steps(4) infinite;
+        }
+
+        @keyframes ellipsis {
+            0%   { content: ''; }
+            25%  { content: '.'; }
+            50%  { content: '..'; }
+            75%  { content: '...'; }
+        }
+
+        /* ===================== VÙNG TIN NHẮN ===================== */
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 6px 8px 14px;
             scroll-behavior: smooth;
             -webkit-overflow-scrolling: touch;
         }
 
-        /*
-        .card {
-            height: 100vh;
-            height: 100dvh;
-            width: 100%;
-            scroll-snap-align: start;
-            scroll-snap-stop: always;
+        .chat-messages::-webkit-scrollbar { width: 6px; }
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+        }
+
+        .day-sep {
             display: flex;
-            flex-direction: column;
-            align-items: center;
             justify-content: center;
-            padding: 80px 20px 100px 20px;
+            margin: 20px 0 6px;
         }
-            */
 
-        /* CAMERA & PREVIEW CANVAS CONTAINER */
-        .camera-container-box {
-            width: 100%;
-            max-width: 380px;
+        .day-sep span {
+            font-size: 0.72rem;
+            color: rgba(255, 255, 255, 0.55);
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 4px 14px;
+            border-radius: 20px;
+        }
+
+        .msg-row {
             display: flex;
-            flex-direction: column;
             align-items: center;
+            margin-top: 14px;
+            cursor: pointer;
         }
 
-        .camera-frame, .preview-canvas-wrapper {
-            width: 100%;
-            aspect-ratio: 1 / 1;
-            border-radius: 45px;
-            background: #111;
-            border: 2px solid rgba(255, 255, 255, 0.15);
+        .msg-row.compact { margin-top: 3px; }
+        .msg-row.mine { flex-direction: row-reverse; }
+
+        .bubble {
             position: relative;
-            overflow: hidden;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.8);
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            max-width: 76%;
+            padding: 9px 14px;
+            border-radius: 22px;
+            font-size: 0.95rem;
+            line-height: 1.45;
+            transition: filter 0.15s ease;
         }
 
-        .camera-video, .preview-canvas {
-            width: 100%;
-            height: 100%;
+        .msg-row:hover .bubble { filter: brightness(1.07); }
+
+        .theirs .bubble {
+            background: rgba(255, 255, 255, 0.09);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            -webkit-backdrop-filter: blur(15px);
+            backdrop-filter: blur(15px);
+            border-bottom-left-radius: 8px;
+            color: #ffffff;
+        }
+
+        .mine .bubble {
+            background: #FFB800;
+            color: #000000;
+            border-bottom-right-radius: 8px;
+            box-shadow: 0 6px 18px rgba(255, 184, 0, 0.25);
+        }
+
+        .bubble-body {
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .msg-time {
+            float: right;
+            margin: 10px -4px -4px 10px;
+            font-size: 0.66rem;
+            opacity: 0.55;
+            user-select: none;
+        }
+
+        /* Icon gợi ý trả lời khi hover */
+        .reply-hint {
+            opacity: 0;
+            margin: 0 10px;
+            font-size: 0.95rem;
+            color: rgba(255, 255, 255, 0.5);
+            transition: opacity 0.15s ease;
+        }
+
+        .msg-row:hover .reply-hint { opacity: 1; }
+
+        /* Đang được chọn để trả lời */
+        .reply-selected .bubble {
+            outline: 2px solid rgba(255, 184, 0, 0.85);
+            outline-offset: 2px;
+        }
+
+        /* Khối trích dẫn (trả lời tin nhắn / ảnh) */
+        .quote {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+            padding: 6px 10px;
+            border-radius: 14px;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+
+        .theirs .quote {
+            background: rgba(255, 255, 255, 0.07);
+            border-left: 3px solid #FFB800;
+        }
+
+        .mine .quote {
+            background: rgba(0, 0, 0, 0.14);
+            border-left: 3px solid rgba(0, 0, 0, 0.4);
+        }
+
+        .quote-lines { min-width: 0; }
+
+        .quote-name {
+            display: block;
+            font-weight: 700;
+            font-size: 0.72rem;
+            opacity: 0.9;
+        }
+
+        .quote-text {
+            display: block;
+            opacity: 0.75;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 260px;
+        }
+
+        .quote img {
+            width: 42px;
+            height: 42px;
+            min-width: 42px;
+            border-radius: 10px;
             object-fit: cover;
         }
 
-        .camera-video { transform: scaleX(-1); }
+        /* Flash khi nhảy tới tin gốc */
+        @keyframes flash-msg {
+            0%, 100% { filter: brightness(1); }
+            50% { filter: brightness(1.6); }
+        }
+        .flash .bubble { animation: flash-msg 0.7s ease 2; }
 
-        .preview-caption-input {
+        .seen-label {
+            text-align: right;
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.5);
+            margin: 4px 8px 0 0;
+        }
+
+        /* Bong bóng "đang nhập" */
+        .typing-row { display: none; }
+        .typing-row.show { display: flex; }
+
+        .typing-bubble {
+            display: flex;
+            gap: 5px;
+            padding: 14px 16px;
+        }
+
+        .typing-bubble span {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.6);
+            animation: typing-bounce 1.2s infinite;
+        }
+
+        .typing-bubble span:nth-child(2) { animation-delay: 0.15s; }
+        .typing-bubble span:nth-child(3) { animation-delay: 0.3s; }
+
+        @keyframes typing-bounce {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+            30% { transform: translateY(-5px); opacity: 1; }
+        }
+
+        /* Trạng thái trống */
+        .empty-state {
             position: absolute;
-            bottom: 18px;
+            inset: 100px 20px 120px;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            color: rgba(255, 255, 255, 0.55);
+            text-align: center;
+            pointer-events: none;
+        }
+
+        .empty-state.show { display: flex; }
+        .empty-state .big-icon { font-size: 3rem; }
+
+        /* Nút nhảy xuống tin mới */
+        .jump-chip {
+            position: absolute;
+            bottom: 98px;
             left: 50%;
-            transform: translateX(-50%);
-            width: 85%;
+            transform: translateX(-50%) translateY(20px);
+            z-index: 50;
             padding: 8px 18px;
             border-radius: 25px;
-            background: rgba(0, 0, 0, 0.55);
-            -webkit-backdrop-filter: blur(15px);
-            backdrop-filter: blur(15px);
-            border: 1px solid rgba(255, 255, 255, 0.25);
-            color: #ffffff;
-            font-size: 0.95rem;
-            font-weight: 500;
-            text-align: center;
-            outline: none;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
-        }
-
-        .preview-caption-input::placeholder { color: rgba(255, 255, 255, 0.6); }
-
-        .camera-actions {
-            margin-top: 20px;
-            display: flex;
-            align-items: center;
-            gap: 30px;
-        }
-
-        .btn-shutter {
-            width: 72px;
-            height: 72px;
-            border-radius: 50%;
-            border: 4px solid #FFB800;
-            background: transparent;
-            box-shadow: 0 0 20px rgba(255, 184, 0, 0.4);
-            transition: all 0.2s ease;
-            position: relative;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #FFB800;
             cursor: pointer;
             display: flex;
             align-items: center;
-            justify-content: center;
+            gap: 8px;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.25s ease;
         }
 
-        .btn-shutter::after {
-            content: '';
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            width: 54px; height: 54px;
-            background: #FFB800;
-            border-radius: 50%;
-            transition: all 0.2s ease;
+        .jump-chip.show {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateX(-50%) translateY(0);
         }
 
-        .btn-shutter:active { transform: scale(0.92); }
-
-        .btn-shutter.mode-send {
-            background: #FFB800;
-            border-color: #FFB800;
-        }
-        .btn-shutter.mode-send::after { display: none; }
-        .btn-shutter.mode-send i {
-            font-size: 1.8rem;
-            color: #000;
-            z-index: 2;
-        }
-
-        /* FEED POST LAYOUT */
-        .feed-post {
-            width: 100%;
-            max-width: 380px;
+        /* ===================== THANH NHẬP TIN ===================== */
+        .chat-inputbar {
+            flex-shrink: 0;
+            border-radius: 28px;
+            padding: 8px 10px;
             display: flex;
             flex-direction: column;
-            align-items: center;
-        }
-
-        .feed-img-wrapper {
-            position: relative;
-            width: 100%;
-            aspect-ratio: 1 / 1;
-            border-radius: 45px;
-            overflow: hidden;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-        }
-
-        .feed-img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .feed-overlay-caption {
-            position: absolute;
-            bottom: 18px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: max-content;
-            max-width: 85%;
-            padding: 8px 18px;
-            border-radius: 25px;
-            background: rgba(0, 0, 0, 0.55);
-            -webkit-backdrop-filter: blur(15px);
-            backdrop-filter: blur(15px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: #ffffff;
-            font-size: 0.95rem;
-            font-weight: 500;
-            text-align: center;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
-        }
-
-        .feed-user-info {
-            margin-top: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        .user-avatar {
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 1.5px solid rgba(255, 255, 255, 0.3);
-        }
-
-        .user-meta {
-            display: flex;
-            align-items: center;
             gap: 6px;
-            font-size: 0.9rem;
         }
 
-        .user-name { font-weight: 700; color: #ffffff; }
-        .post-time { color: rgba(255, 255, 255, 0.6); font-size: 0.8rem; }
-
-        /* Emoji Reactions Bar */
-        .feed-emoji-bar {
-            display: flex;
+        .reply-preview {
+            display: none;
             align-items: center;
-            justify-content: space-around;
-            width: 100%;
-            max-width: 320px;
-            padding: 6px 16px;
-            margin-top: 10px;
-            margin-bottom: 10px;
-            border-radius: 25px;
-            background: rgba(255, 255, 255, 0.08);
-            -webkit-backdrop-filter: blur(15px);
-            backdrop-filter: blur(15px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
+            gap: 10px;
+            padding: 6px 8px 6px 14px;
+            border-radius: 18px;
+            background: rgba(255, 184, 0, 0.1);
+            border-left: 3px solid #FFB800;
+            font-size: 0.8rem;
         }
 
-        .emoji-btn {
+        .reply-preview.show { display: flex; }
+
+        .reply-preview .rp-lines {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .reply-preview .rp-name {
+            color: #FFB800;
+            font-weight: 700;
+            font-size: 0.72rem;
+            display: block;
+        }
+
+        .reply-preview .rp-text {
+            display: block;
+            color: rgba(255, 255, 255, 0.75);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .rp-cancel {
             background: transparent;
             border: none;
-            font-size: 1.3rem;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 1rem;
             cursor: pointer;
-            transition: transform 0.15s ease;
-            line-height: 1;
+            padding: 4px 8px;
         }
 
-        .emoji-btn:hover, .emoji-btn:active {
-            transform: scale(1.4);
-        }
+        .rp-cancel:hover { color: #fff; }
 
-        /* Reply Input Bar */
-        .feed-reply-bar {
-            width: 100%;
+        .input-row {
             display: flex;
             align-items: center;
             gap: 8px;
-            background: rgba(255, 255, 255, 0.08);
-            -webkit-backdrop-filter: blur(15px);
-            backdrop-filter: blur(15px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 25px;
-            padding: 4px 6px 4px 16px;
         }
 
-        .reply-input {
+        .msg-input {
             flex: 1;
             background: transparent;
             border: none;
             outline: none;
             color: #ffffff;
-            font-size: 0.88rem;
+            font-size: 0.95rem;
+            padding: 8px 8px 8px 12px;
         }
 
-        .reply-input::placeholder {
-            color: rgba(255, 255, 255, 0.5);
-        }
+        .msg-input::placeholder { color: rgba(255, 255, 255, 0.45); }
 
-        .btn-reply-send {
-            width: 32px;
-            height: 32px;
+        .btn-send {
+            width: 44px;
+            height: 44px;
+            min-width: 44px;
             border-radius: 50%;
             border: none;
             background: #FFB800;
             color: #000000;
+            font-size: 1.1rem;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: transform 0.15s ease;
-            font-size: 0.9rem;
+            transition: transform 0.15s ease, opacity 0.15s ease;
+            box-shadow: 0 0 18px rgba(255, 184, 0, 0.35);
         }
 
-        .btn-reply-send:active { transform: scale(0.9); }
-
-        /* CARD END */
-        .end-card-box {
-            width: 100%;
-            max-width: 380px;
-            aspect-ratio: 1 / 1;
-            border-radius: 45px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 30px;
-        }
+        .btn-send:active { transform: scale(0.9); }
+        .btn-send:disabled { opacity: 0.35; cursor: default; box-shadow: none; }
 
         /* POP-UP TOAST */
         .toast-notification {
@@ -391,6 +489,7 @@
             border: 1px solid rgba(255, 184, 0, 0.5);
             color: #fff;
             font-weight: 600;
+            font-size: 0.88rem;
             box-shadow: 0 10px 30px rgba(0,0,0,0.8);
             display: flex;
             align-items: center;
@@ -400,145 +499,8 @@
 
         .toast-notification.show { transform: translate(-50%, 0); }
 
-        /* FAB BUTTON GÓC DƯỚI BÊN PHẢI MOBILE */
-        .mobile-fab-btn {
-            position: fixed;
-            bottom: 25px;
-            right: 20px;
-            width: 52px;
-            height: 52px;
-            border-radius: 50%;
-            z-index: 1040;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.3rem;
-            color: #FFB800;
-            cursor: pointer;
-            transition: transform 0.2s ease;
-        }
-
-        .mobile-fab-btn:active { transform: scale(0.9); }
-
-        /* BOTTOM NAVBAR MOBILE (Triệu hồi qua FAB) */
-        .mobile-navbar {
-            position: fixed;
-            bottom: 25px;
-            left: 0;
-            width: 100%;
-            z-index: 1050;
-            display: flex;
-            justify-content: center;
-            pointer-events: none;
-        }
-
-        .avatar{
-            width:100px;
-            height:100px;
-            border-radius: 50%;
-        }
-
-        .navbar-body {
-            pointer-events: auto;
-            width: 65%;
-            max-width: 300px;
-            height: 65px;
-            border-radius: 35px;
-            transition: transform 0.35s cubic-bezier(0.1, 1, 0.1, 1), opacity 0.3s ease;
-
-            /* Mặc định ẩn hoàn toàn xuống phía dưới */
-            opacity: 0;
-            pointer-events: none;
-            transform: translateY(120%);
-        }
-
-        /* Class kích hoạt khi bấm FAB */
-        .navbar-body.active {
-            opacity: 1;
-            pointer-events: auto;
-            transform: translateY(0);
-        }
-
-        .navbar-items {
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            width: 100%;
-            height: 100%;
-            padding: 0;
-            margin: 0;
-            list-style: none;
-        }
-
-        .pd{
-            padding:10px;
-        }
-
-        .card{
-            position: relative;
-            width: 90%;
-            height:200px;
-            padding: 20px;
-            border-radius: 30px;
-            background-color: rgba(255, 184, 0, 0.08);
-            -webkit-backdrop-filter: blur(25px) saturate(200%);
-            backdrop-filter: blur(25px) saturate(200%);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            box-shadow: 
-                0 20px 50px rgba(0, 0, 0, 0.5),
-                inset 0 1px 1px rgba(255, 255, 255, 0.4),
-                inset 0 -1px 2px rgba(255, 184, 0, 0.2);
-
-            color: #ffffff;
-            
-            /* Hiệu ứng mượt mà khi tương tác */
-            transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1),
-                        box-shadow 0.4s cubic-bezier(0.25, 1, 0.5, 1);
-            cursor: pointer;
-        }
-
-        .col-2{
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .chat-list{
-            display: flex;
-            flex-direction: column;
-            width: 100%;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 50%;
-            border-radius: 30px 30px 0 0;
-            background: linear-gradient(
-                180deg, 
-                rgba(255, 255, 255, 0.25) 0%, 
-                rgba(255, 255, 255, 0) 100%
-            );
-            pointer-events: none;
-        }
-        .card:hover {
-            transform: scale(1.03) translateY(-5px);
-            box-shadow: 
-                0 30px 60px rgba(0, 0, 0, 0.3),
-                inset 0 1px 0 rgba(255, 255, 255, 0.7),
-                inset 0 -1px 0 rgba(0, 0, 0, 0.1);
-        }
-
-        .navbar-items li i { font-size: 1.5rem; color: #ffffff; cursor: pointer; }
-
         /* RESPONSIVE MÀN HÌNH LỚN */
         @media (min-width: 992px) {
-            .mobile-navbar, .mobile-fab-btn { display: none !important; }
             .desktop-sidebar {
                 display: flex; flex-direction: column;
                 position: fixed; top: 0; left: 0;
@@ -555,150 +517,187 @@
                 padding: 12px 20px; border-radius: 20px; transition: all 0.2s ease;
             }
             .sidebar-link.active {
-                 background-color: rgba(255, 184, 0, 0.08);
+                background-color: rgba(255, 184, 0, 0.08);
                 -webkit-backdrop-filter: blur(25px) saturate(200%);
                 backdrop-filter: blur(25px) saturate(200%);
                 border: 1px solid rgba(255, 255, 255, 0.3);
-                box-shadow: 
+                box-shadow:
                     0 20px 50px rgba(0, 0, 0, 0.5),
                     inset 0 1px 1px rgba(255, 255, 255, 0.4),
                     inset 0 -1px 2px rgba(255, 184, 0, 0.2);
-
             }
             .sidebar-link:hover{
                 background-color: rgba(255, 184, 0, 0.08);
                 -webkit-backdrop-filter: blur(25px) saturate(200%);
                 backdrop-filter: blur(25px) saturate(200%);
                 border: 1px solid rgba(255, 255, 255, 0.3);
-                box-shadow: 
+                box-shadow:
                     0 20px 50px rgba(0, 0, 0, 0.5),
                     inset 0 1px 1px rgba(255, 255, 255, 0.4),
                     inset 0 -1px 2px rgba(255, 184, 0, 0.2);
                 transform: scale(1.03) translateY(-5px);
             }
             .app-layout {
-                margin-left: 250px; width: calc(100vw - 250px);
-                display: flex; justify-content: center; align-items: center; padding-top: 80px;
+                margin-left: 250px;
+                width: calc(100vw - 250px);
             }
-            .desktop-container {
-                display: flex; width: 100%; max-width: 900px;
-                height: calc(100vh - 100px); gap: 40px;
-            }
-            .left-column {
-                flex: 1; display: flex; flex-direction: column;
-                align-items: center; justify-content: center;
-            }
-            .right-column {
-                flex: 1; height: 100%; overflow-y: auto; padding-right: 10px; scroll-snap-type: none;
-            }
-            .right-column::-webkit-scrollbar { width: 6px; }
-            .right-column::-webkit-scrollbar-thumb {
-                background: rgba(255, 255, 255, 0.2); border-radius: 10px;
-            }
-            .view-feed { height: auto; overflow-y: visible; scroll-snap-type: none; }
-            .card-item { height: auto; padding: 0 0 40px 0; scroll-snap-align: none; }
-            #camera-card { display: none; }
+            .chat-shell { padding: 24px 20px; }
         }
     </style>
 </head>
 <body>
 
-    <!-- Input file ẩn -->
-    <input type="file" id="file-input" accept="image/*" style="display: none;">
-
-    <!-- Toast notification -->
-
-    <!-- Topbar -->
-    <header class="topbar">
-        <div class="topbar-content">
-            <div class="topbar-left">
-                <div class="btn-glass-circle glass-panel">
-                    <i class="bi bi-person-fill"></i>
-                </div>
-            </div>
-            <div class="topbar-center">
-                <!--<div class="dropdown">
-                    <a class="dropdown-toggle-custom glass-panel" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-people-fill text-warning"></i> Bạn bè
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end mt-2 rounded-4 border-secondary">
-                        <li><a class="dropdown-item active" href="#">Tất cả bạn bè</a></li>
-                        <li><a class="dropdown-item" href="#">Người yêu 💛</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="#"><i class="bi bi-person-plus me-2"></i>Thêm bạn mới</a></li>
-                    </ul>
-                </div>-->
-            </div>
-            <div class="topbar-right">
-                <div class="btn-glass-circle glass-panel">
-                    <i class="bi bi-lightning-fill text-warning"></i>
-                </div>
-            </div>
-        </div>
-    </header>
+    <div style="display:none">{% csrf_token %}</div>
 
     <!-- Sidebar Desktop -->
     <aside class="desktop-sidebar">
         <ul class="sidebar-menu">
-            <li><a href="#" class="sidebar-link"><i class="bi bi-camera-fill"></i> Camera</a></li>
-            <li><a href="#" class="sidebar-link active"><i class="bi bi-chat-fill"></i> Tin nhắn</a></li>
+            <li><a href="/" class="sidebar-link"><i class="bi bi-camera-fill"></i> Camera</a></li>
+            <li><a href="/chat/" class="sidebar-link active"><i class="bi bi-chat-fill"></i> Tin nhắn</a></li>
             <li><a href="#" class="sidebar-link"><i class="bi bi-gear-fill"></i> Cài đặt</a></li>
         </ul>
     </aside>
 
     <!-- Main Container -->
     <div class="app-layout">
-        <div class="view-feed">
-            <div class="message-header"></div>
-            <div class="message-view"></div>
-        </div>
-        <div class="message-input-group" style="display: flex;flex-direction: column;">
-                <div class="input-group">
-                    <input class="form-control" style="width: 80%;" />
-                    <button class="btn btn-primary" style="width: 20%;">
-                        <i class="bi bi-send"></i>
+        <div class="chat-shell">
+
+            <!-- Topbar phòng chat -->
+            <header class="chat-topbar glass-panel">
+                <a href="/chat/" class="btn-glass-circle glass-panel" title="Quay lại">
+                    <i class="bi bi-arrow-left"></i>
+                </a>
+                <div class="peer-info" id="peer-info">
+                    {% if receiver.avatar %}
+                        <img class="peer-avatar" src="{{ receiver.avatar.url }}" alt="">
+                    {% else %}
+                        <div class="peer-avatar peer-initial">{{ receiver.user.username|first|upper }}</div>
+                    {% endif %}
+                    <div class="peer-meta">
+                        <div class="peer-name">{{ receiver.user.username }}</div>
+                        <div class="peer-status" id="peer-status"><span class="typing-text">đang nhập</span></div>
+                    </div>
+                </div>
+                <div class="btn-glass-circle glass-panel">
+                    <i class="bi bi-lightning-fill text-warning"></i>
+                </div>
+            </header>
+
+            <!-- Danh sách tin nhắn -->
+            <div class="chat-messages" id="messages">
+                {% for m in chat_messages %}
+                {% ifchanged m.created_at|date:"d/m/Y" %}
+                <div class="day-sep"><span>{{ m.created_at|date:"d/m/Y" }}</span></div>
+                {% endifchanged %}
+                <div class="msg-row {% if m.sender_id == my_bio_id %}mine{% else %}theirs{% endif %}" data-id="{{ m.id }}">
+                    <div class="bubble" title="{{ m.created_at|date:'H:i d/m/Y' }}">
+                        {% if m.message_reply %}
+                        <div class="quote" data-target="{{ m.message_reply.id }}">
+                            <div class="quote-lines">
+                                <span class="quote-name">{{ m.message_reply.sender.user.username }}</span>
+                                <span class="quote-text">{{ m.message_reply.message|truncatechars:80 }}</span>
+                            </div>
+                        </div>
+                        {% elif m.image_reply %}
+                        <div class="quote">
+                            {% if m.image_reply.image %}<img src="{{ m.image_reply.image.url }}" alt="">{% endif %}
+                            <div class="quote-lines">
+                                <span class="quote-name">Ảnh</span>
+                                <span class="quote-text">{{ m.image_reply.text|default:""|truncatechars:60 }}</span>
+                            </div>
+                        </div>
+                        {% endif %}
+                        <div class="bubble-body">{{ m.message }}<span class="msg-time">{{ m.created_at|date:"H:i" }}</span></div>
+                    </div>
+                    <i class="bi bi-reply-fill reply-hint"></i>
+                </div>
+                {% endfor %}
+
+                <!-- Bong bóng đang nhập -->
+                <div class="msg-row theirs typing-row" id="typing-row">
+                    <div class="bubble typing-bubble"><span></span><span></span><span></span></div>
+                </div>
+            </div>
+
+            <!-- Trạng thái trống -->
+            <div class="empty-state" id="empty-state">
+                <div class="big-icon">💬</div>
+                <div>Chưa có tin nhắn nào.<br>Hãy gửi lời chào 👋</div>
+            </div>
+
+            <!-- Nút nhảy xuống tin mới -->
+            <div class="jump-chip glass-panel" id="jump-chip">
+                <i class="bi bi-arrow-down"></i> Tin nhắn mới
+            </div>
+
+            <!-- Thanh nhập tin -->
+            <footer class="chat-inputbar glass-panel">
+                <div class="reply-preview" id="reply-preview">
+                    <i class="bi bi-reply-fill" style="color:#FFB800"></i>
+                    <div class="rp-lines">
+                        <span class="rp-name" id="rp-name"></span>
+                        <span class="rp-text" id="rp-text"></span>
+                    </div>
+                    <button class="rp-cancel" id="rp-cancel" title="Hủy trả lời"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <div class="input-row">
+                    <input type="text" class="msg-input" id="msg-input" placeholder="Nhắn tin..." autocomplete="off">
+                    <button class="btn-send" id="btn-send" disabled title="Gửi">
+                        <i class="bi bi-send-fill"></i>
                     </button>
                 </div>
+            </footer>
         </div>
     </div>
 
-    <!-- FAB BUTTON BẤM MỞ BOTTOM NAVBAR -->
-    <div class="mobile-fab-btn glass-panel" id="fab-nav-trigger" title="Menu">
-        <i class="bi bi-grid-fill"></i>
-    </div>
-
-    <!-- Bottom Nav (Mobile) -->
-    <div class="mobile-navbar">
-        <div class="navbar-body glass-panel" id="bottom-nav">
-            <ul class="navbar-items">
-                <li><i class="bi bi-grid-fill"></i></li>
-                <li><i class="bi bi-camera-fill text-warning" id="nav-camera-btn"></i></li>
-                <li><i class="bi bi-chat-fill"></i></li>
-            </ul>
-        </div>
+    <!-- Toast -->
+    <div class="toast-notification" id="toast">
+        <i class="bi bi-exclamation-circle-fill text-warning" id="toast-icon"></i>
+        <span id="toast-message"></span>
     </div>
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-        // Xử lý biến Jinja2 an toàn bằng String, không làm gãy JS khi mở file thô
-        let rawLastPage = "{{ last_page|default:'' }}";
-        let rawHasNext = "{{ has_next|yesno:'true,false' }}";
+        // ----------------------------------------------------
+        // BIẾN TỪ DJANGO — có fallback để mở file thô không gãy
+        // ----------------------------------------------------
+        function djVar(raw, fallback) {
+            return raw.includes('{'+'{') ? fallback : raw;
+        }
 
-        let lastPage = rawLastPage.includes("{{") ? "" : rawLastPage;
-        let hasNext = rawHasNext.includes("{{") ? false : (rawHasNext === "true");
+        const IS_LIVE = !"{{ room_id }}".includes('{'+'{');
+        const ROOM_ID = djVar("{{ room_id }}", "0");
+        const MY_BIO_ID = parseInt(djVar("{{ my_bio_id|default:'0' }}", "1"), 10);
+        const MY_USER_ID = parseInt(djVar("{{ request.user.id|default:'0' }}", "1"), 10);
+        const MY_NAME = djVar("{{ request.user.username|default:'Bạn' }}", "Bạn");
+        const RECEIVER_USER_ID = djVar("{{ receiver_user_id|default:'0' }}", "2");
+        const RECEIVER_NAME = djVar("{{ receiver.user.username|default:'Bạn bè' }}", "Minh Anh");
+        const RECEIVER_LAST_READ = parseInt(djVar("{{ receiver_last_read_msg_id|default:'0' }}", "2"), 10);
 
-        let isFetching = false;
-        let currentStream = null;
-        let isPreviewMode = false;
-        let capturedBase64Data = null;
-
-        const fileInput = document.getElementById('file-input');
-        const toastPopover = document.getElementById('toast-popover');
-        const toastMessage = document.getElementById('toast-message');
+        const messagesEl = document.getElementById('messages');
+        const typingRow = document.getElementById('typing-row');
+        const peerStatus = () => document.getElementById('peer-status');
+        const emptyState = document.getElementById('empty-state');
+        const jumpChip = document.getElementById('jump-chip');
+        const msgInput = document.getElementById('msg-input');
+        const btnSend = document.getElementById('btn-send');
+        const replyPreview = document.getElementById('reply-preview');
+        const rpName = document.getElementById('rp-name');
+        const rpText = document.getElementById('rp-text');
+        const rpCancel = document.getElementById('rp-cancel');
+        const toastEl = document.getElementById('toast');
+        const toastMsg = document.getElementById('toast-message');
         const toastIcon = document.getElementById('toast-icon');
-        
+
+        const rendered = new Set();   // id các tin đã hiển thị (chống trùng WS/fetch)
+        let replyTarget = null;       // { id, name, text }
+        let ws = null;
+        let wsRetry = 0;
+        let typingTimer = null;
+        let typingSent = false;
+        let toastTimer = null;
 
         function getCookie(name) {
             let cookieValue = null;
@@ -715,45 +714,392 @@
             return cookieValue;
         }
 
-        // ----------------------------------------------------
-        // 1. LOGIC BẬT/TẮT BOTTOM NAVBAR BẰNG FAB BUTTON
-        // ----------------------------------------------------
-        const fabBtn = document.getElementById('fab-nav-trigger');
-        const bottomNav = document.getElementById('bottom-nav');
-        const navCameraBtn = document.getElementById('nav-camera-btn');
+        function csrfToken() {
+            const input = document.querySelector('input[name=csrfmiddlewaretoken]');
+            return (input && input.value) || getCookie('csrftoken') || '';
+        }
 
-        if (fabBtn && bottomNav) {
-            fabBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                bottomNav.classList.toggle('active');
-            });
+        function showToast(message, icon) {
+            toastMsg.textContent = message;
+            toastIcon.className = 'bi ' + (icon || 'bi-exclamation-circle-fill') + ' text-warning';
+            toastEl.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => toastEl.classList.remove('show'), 3000);
+        }
 
-            // Bấm ra ngoài đóng Navbar
-            document.addEventListener('click', (e) => {
-                if (!bottomNav.contains(e.target) && !fabBtn.contains(e.target)) {
-                    bottomNav.classList.remove('active');
+        // ----------------------------------------------------
+        // DỰNG BONG BÓNG TIN NHẮN (textContent — an toàn XSS)
+        // ----------------------------------------------------
+        function fmtTime(d) {
+            return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+        }
+
+        function buildRow({ id, text, mine, quote }) {
+            const row = document.createElement('div');
+            row.className = 'msg-row ' + (mine ? 'mine' : 'theirs');
+            if (id != null) row.dataset.id = String(id);
+
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble';
+            bubble.title = fmtTime(new Date());
+
+            if (quote) {
+                const q = document.createElement('div');
+                q.className = 'quote';
+                if (quote.targetId != null) q.dataset.target = String(quote.targetId);
+                const lines = document.createElement('div');
+                lines.className = 'quote-lines';
+                const qn = document.createElement('span');
+                qn.className = 'quote-name';
+                qn.textContent = quote.name;
+                const qt = document.createElement('span');
+                qt.className = 'quote-text';
+                qt.textContent = quote.text;
+                lines.appendChild(qn);
+                lines.appendChild(qt);
+                q.appendChild(lines);
+                bubble.appendChild(q);
+            }
+
+            const body = document.createElement('div');
+            body.className = 'bubble-body';
+            body.textContent = text;
+            const time = document.createElement('span');
+            time.className = 'msg-time';
+            time.textContent = fmtTime(new Date());
+            body.appendChild(time);
+            bubble.appendChild(body);
+
+            const hint = document.createElement('i');
+            hint.className = 'bi bi-reply-fill reply-hint';
+
+            row.appendChild(bubble);
+            row.appendChild(hint);
+            return row;
+        }
+
+        function bubbleText(row) {
+            const body = row.querySelector('.bubble-body');
+            if (!body) return '';
+            const clone = body.cloneNode(true);
+            const t = clone.querySelector('.msg-time');
+            if (t) t.remove();
+            return clone.textContent.trim();
+        }
+
+        function nearBottom() {
+            return messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 140;
+        }
+
+        function scrollBottom(smooth) {
+            messagesEl.scrollTo({ top: messagesEl.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
+        }
+
+        function refreshCompact(row) {
+            // Tin liên tiếp cùng một phía thì sát nhau hơn
+            const prev = row.previousElementSibling;
+            if (prev && prev.classList.contains('msg-row') && !prev.classList.contains('typing-row')
+                && prev.classList.contains('mine') === row.classList.contains('mine')) {
+                row.classList.add('compact');
+            }
+        }
+
+        function appendRow(row, opts) {
+            const stick = (opts && opts.forceScroll) || nearBottom();
+            messagesEl.insertBefore(row, typingRow);
+            refreshCompact(row);
+            emptyState.classList.remove('show');
+            if (stick) scrollBottom(true);
+            else jumpChip.classList.add('show');
+        }
+
+        function removeSeenLabel() {
+            const s = messagesEl.querySelector('.seen-label');
+            if (s) s.remove();
+        }
+
+        // ----------------------------------------------------
+        // TRẠNG THÁI "ĐANG NHẬP"
+        // ----------------------------------------------------
+        function setPeerTyping(isTyping) {
+            typingRow.classList.toggle('show', !!isTyping);
+            const st = peerStatus();
+            if (st) st.classList.toggle('show', !!isTyping);
+            if (isTyping && nearBottom()) scrollBottom(true);
+        }
+
+        // ----------------------------------------------------
+        // NHẬN TIN QUA WEBSOCKET
+        // ----------------------------------------------------
+        function handleIncoming(data) {
+            const id = String(data.message_id);
+            if (rendered.has(id)) return;
+            rendered.add(id);
+
+            const mine = data.sender_id === MY_BIO_ID;
+            if (!mine) setPeerTyping(false);
+
+            let quote = null;
+            if (data.reply_message_id != null) {
+                const target = messagesEl.querySelector('.msg-row[data-id="' + data.reply_message_id + '"]');
+                quote = {
+                    targetId: data.reply_message_id,
+                    name: target && target.classList.contains('mine') ? MY_NAME : RECEIVER_NAME,
+                    text: target ? bubbleText(target) : 'Tin nhắn'
+                };
+            } else if (data.reply_image_id != null) {
+                quote = { targetId: null, name: 'Ảnh', text: '📷 Đã trả lời một ảnh' };
+            }
+
+            appendRow(buildRow({ id, text: data.text, mine, quote }), { forceScroll: mine });
+            if (mine) removeSeenLabel();
+        }
+
+        function connectWS() {
+            if (!IS_LIVE) return;
+            ws = new WebSocket(
+                (window.location.protocol === 'https:' ? 'wss://' : 'ws://')
+                + window.location.host + '/ws/chat/' + ROOM_ID
+            );
+
+            ws.onopen = () => {
+                wsRetry = 0;
+                toastEl.classList.remove('show');
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.type === 'user_typing') {
+                    if (data.user_id === MY_USER_ID) return; // consumer phát cho cả chính mình
+                    setPeerTyping(data.is_typing);
+                } else if (data.type === 'new_message_notification') {
+                    handleIncoming(data);
                 }
+            };
+
+            ws.onclose = () => {
+                showToast('Mất kết nối, đang kết nối lại...', 'bi-wifi-off');
+                const delay = Math.min(15000, 1000 * Math.pow(2, wsRetry++));
+                setTimeout(connectWS, delay);
+            };
+        }
+
+        function emitTyping(state) {
+            if (!IS_LIVE || !ws || ws.readyState !== WebSocket.OPEN) return;
+            if (typingSent === state) return;
+            typingSent = state;
+            ws.send(JSON.stringify({ type: 'typing', is_typing: state }));
+        }
+
+        // ----------------------------------------------------
+        // GỬI TIN NHẮN — POST tới endpoint có sẵn trong views.py
+        // ----------------------------------------------------
+        function sendMessage() {
+            const text = msgInput.value.trim();
+            if (!text) return;
+
+            clearTimeout(typingTimer);
+            emitTyping(false);
+
+            const target = replyTarget;
+            cancelReply();
+            msgInput.value = '';
+            btnSend.disabled = true;
+            msgInput.focus();
+
+            if (!IS_LIVE) { mockSend(text, target); return; }
+
+            const url = target
+                ? '/chat/to/' + RECEIVER_USER_ID + '/reply/message/' + target.id
+                : '/chat/to/' + RECEIVER_USER_ID + '/';
+
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken()
+                },
+                body: JSON.stringify({ message: text })
+            })
+            .then(res => {
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                return res.json();
+            })
+            .then(data => {
+                // Bình thường tin sẽ về qua WS echo; nếu WS rớt thì tự vẽ sau 900ms
+                setTimeout(() => {
+                    handleIncoming({
+                        message_id: data.message_id,
+                        text: text,
+                        sender_id: MY_BIO_ID,
+                        reply_message_id: target ? target.id : null
+                    });
+                }, 900);
+            })
+            .catch(() => {
+                showToast('Gửi tin nhắn thất bại, thử lại nhé');
+                if (!msgInput.value) msgInput.value = text;
+                btnSend.disabled = !msgInput.value.trim();
             });
         }
 
-        if (navCameraBtn) {
-            navCameraBtn.addEventListener('click', () => {
-                bottomNav?.classList.remove('active');
-                document.getElementById('main-feed')?.scrollTo({
-                    top: 0,
-                    behavior: 'smooth'
-                });
-            });
+        // ----------------------------------------------------
+        // CHỌN TIN ĐỂ TRẢ LỜI
+        // ----------------------------------------------------
+        function selectReply(row) {
+            const id = row.dataset.id;
+            if (!id) return;
+
+            if (replyTarget && String(replyTarget.id) === id) { cancelReply(); return; }
+
+            const prev = messagesEl.querySelector('.reply-selected');
+            if (prev) prev.classList.remove('reply-selected');
+
+            replyTarget = {
+                id,
+                name: row.classList.contains('mine') ? MY_NAME : RECEIVER_NAME,
+                text: bubbleText(row)
+            };
+            row.classList.add('reply-selected');
+            rpName.textContent = 'Trả lời ' + replyTarget.name;
+            rpText.textContent = replyTarget.text;
+            replyPreview.classList.add('show');
+            msgInput.focus();
         }
 
-        const card = document.querySelector('.card');
+        function cancelReply() {
+            replyTarget = null;
+            replyPreview.classList.remove('show');
+            const prev = messagesEl.querySelector('.reply-selected');
+            if (prev) prev.classList.remove('reply-selected');
+        }
 
+        // ----------------------------------------------------
+        // SỰ KIỆN GIAO DIỆN
+        // ----------------------------------------------------
+        btnSend.addEventListener('click', sendMessage);
 
-        card.addEventListener('mouseleave')
-
-        card.addEventListener('click', () => {
-            window.location.assign('/chat/{{}}')
+        msgInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+            if (e.key === 'Escape') cancelReply();
         });
+
+        msgInput.addEventListener('input', () => {
+            btnSend.disabled = !msgInput.value.trim();
+            emitTyping(true);
+            clearTimeout(typingTimer);
+            typingTimer = setTimeout(() => emitTyping(false), 1800);
+        });
+
+        rpCancel.addEventListener('click', cancelReply);
+
+        messagesEl.addEventListener('click', (e) => {
+            const quote = e.target.closest('.quote[data-target]');
+            if (quote) {
+                e.stopPropagation();
+                const origin = messagesEl.querySelector('.msg-row[data-id="' + quote.dataset.target + '"]');
+                if (origin) {
+                    origin.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    origin.classList.add('flash');
+                    setTimeout(() => origin.classList.remove('flash'), 1500);
+                }
+                return;
+            }
+            const row = e.target.closest('.msg-row[data-id]');
+            if (row) selectReply(row);
+        });
+
+        messagesEl.addEventListener('scroll', () => {
+            if (nearBottom()) jumpChip.classList.remove('show');
+        });
+
+        jumpChip.addEventListener('click', () => {
+            scrollBottom(true);
+            jumpChip.classList.remove('show');
+        });
+
+        // ----------------------------------------------------
+        // CHẾ ĐỘ XEM THỬ (mở file thô, không qua Django)
+        // ----------------------------------------------------
+        function mockSend(text, target) {
+            const id = 'mock-' + Date.now();
+            rendered.add(id);
+            appendRow(buildRow({
+                id, text, mine: true,
+                quote: target ? { targetId: target.id, name: target.name, text: target.text } : null
+            }), { forceScroll: true });
+
+            setTimeout(() => setPeerTyping(true), 800);
+            setTimeout(() => {
+                setPeerTyping(false);
+                const rid = 'mock-' + (Date.now() + 1);
+                rendered.add(rid);
+                appendRow(buildRow({ id: rid, text: 'Nghe hay đó! 😄', mine: false }));
+            }, 2600);
+        }
+
+        function bootMock() {
+            document.title = RECEIVER_NAME + ' • Locket Chat';
+            document.getElementById('peer-info').innerHTML =
+                '<div class="peer-avatar peer-initial">' + RECEIVER_NAME[0].toUpperCase() + '</div>' +
+                '<div class="peer-meta"><div class="peer-name">' + RECEIVER_NAME + '</div>' +
+                '<div class="peer-status" id="peer-status"><span class="typing-text">đang nhập</span></div></div>';
+
+            // Xóa phần chữ template thô rồi bơm hội thoại mẫu
+            messagesEl.innerHTML = '';
+            messagesEl.appendChild(typingRow);
+
+            const sep = document.createElement('div');
+            sep.className = 'day-sep';
+            sep.innerHTML = '<span>Hôm nay</span>';
+            messagesEl.insertBefore(sep, typingRow);
+
+            const demo = [
+                { id: 1, mine: false, text: 'Ê, cuối tuần này đi cà phê không? ☕' },
+                { id: 2, mine: true,  text: 'Đi chứ! Quán cũ hay chỗ mới mở gần trường?' },
+                { id: 3, mine: false, text: 'Chỗ mới đi, nghe nói view đẹp lắm',
+                  quote: { targetId: 2, name: RECEIVER_NAME, text: 'Đi chứ! Quán cũ hay chỗ mới mở gần trường?' } },
+                { id: 4, mine: true,  text: 'Chốt luôn, 9h sáng thứ 7 nhé 📸' }
+            ];
+            demo.forEach(m => {
+                rendered.add(String(m.id));
+                const row = buildRow(m);
+                messagesEl.insertBefore(row, typingRow);
+                refreshCompact(row);
+            });
+        }
+
+        // ----------------------------------------------------
+        // KHỞI ĐỘNG
+        // ----------------------------------------------------
+        function boot() {
+            if (!IS_LIVE) {
+                bootMock();
+            } else {
+                document.title = RECEIVER_NAME + ' • Locket Chat';
+                messagesEl.querySelectorAll('.msg-row[data-id]').forEach(r => {
+                    rendered.add(r.dataset.id);
+                    refreshCompact(r);
+                });
+                // Trạng thái "Đã xem" cho tin cuối của mình
+                const myRows = messagesEl.querySelectorAll('.msg-row.mine[data-id]');
+                const lastMine = myRows[myRows.length - 1];
+                if (lastMine && parseInt(lastMine.dataset.id, 10) <= RECEIVER_LAST_READ) {
+                    const seen = document.createElement('div');
+                    seen.className = 'seen-label';
+                    seen.textContent = 'Đã xem';
+                    lastMine.insertAdjacentElement('afterend', seen);
+                }
+                connectWS();
+            }
+
+            if (!messagesEl.querySelector('.msg-row[data-id]')) {
+                emptyState.classList.add('show');
+            }
+            scrollBottom(false);
+        }
+
+        boot();
     </script>
 </body>
 </html>
