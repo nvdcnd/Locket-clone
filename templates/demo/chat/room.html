@@ -91,7 +91,7 @@
         .app-layout {
             width: 100vw;
             height: 100vh;
-            padding-top:20px;
+            display:block;
         }
 
         .view-feed {
@@ -477,7 +477,7 @@
         .card{
             position: relative;
             width: 90%;
-            height:150px;
+            height:200px;
             padding: 20px;
             border-radius: 30px;
             background-color: rgba(255, 184, 0, 0.08);
@@ -536,51 +536,6 @@
 
         .navbar-items li i { font-size: 1.5rem; color: #ffffff; cursor: pointer; }
 
-        .page-link{
-            position: relative;
-            width: 90%;
-            height:200px;
-            padding: 20px;
-            background-color: rgba(255, 184, 0, 0.08);
-            -webkit-backdrop-filter: blur(25px) saturate(200%);
-            backdrop-filter: blur(25px) saturate(200%);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            box-shadow: 
-                0 20px 50px rgba(0, 0, 0, 0.5),
-                inset 0 1px 1px rgba(255, 255, 255, 0.4),
-                inset 0 -1px 2px rgba(255, 184, 0, 0.2);
-
-            color: #ffffff;
-            
-            /* Hiệu ứng mượt mà khi tương tác */
-            transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1),
-                        box-shadow 0.4s cubic-bezier(0.25, 1, 0.5, 1);
-            cursor: pointer;
-        }
-
-        .page-link:hover{
-            transform: scale(1.03) translateY(-5px);
-            box-shadow: 
-                0 30px 60px rgba(0, 0, 0, 0.3),
-                inset 0 1px 0 rgba(255, 255, 255, 0.7),
-                inset 0 -1px 0 rgba(0, 0, 0, 0.1);
-             background-color: rgba(255, 184, 0, 0.08);
-            -webkit-backdrop-filter: blur(25px) saturate(200%);
-            backdrop-filter: blur(25px) saturate(200%);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            color: #FFB800;
-        }
-
-        .page-disabled{
-            color: gray;
-            pointer-events:none;
-        }
-
-        .cant-hover:hover{
-            transform:none;
-            color:white;
-        }
-
         /* RESPONSIVE MÀN HÌNH LỚN */
         @media (min-width: 992px) {
             .mobile-navbar, .mobile-fab-btn { display: none !important; }
@@ -622,7 +577,6 @@
                 transform: scale(1.03) translateY(-5px);
             }
             .app-layout {
-                padding-top:100px;
                 margin-left: 250px; width: calc(100vw - 250px);
                 display: flex; justify-content: center; align-items: center; padding-top: 80px;
             }
@@ -648,6 +602,12 @@
     </style>
 </head>
 <body>
+
+    <!-- Input file ẩn -->
+    <input type="file" id="file-input" accept="image/*" style="display: none;">
+
+    <!-- Toast notification -->
+
     <!-- Topbar -->
     <header class="topbar">
         <div class="topbar-content">
@@ -689,65 +649,9 @@
     <!-- Main Container -->
     <div class="app-layout">
         <div class="view-feed">
-            <div class="chat-list">
-                {% if chat_lists %}
-                    {% for chat in chat_lists %}
-                        {% if chat.user1.user.id = request.user.id %}
-                            <div class='card' id={{chat.id}}>
-                                <div class='row pd'>
-                                    <div class="col-2">
-                                        <img src="{{ chat.user1.user.avatar.url }}" class="avatar" />
-                                    </div>
-                                    <div class="col-8">
-                                        <h3>{{ chat.user1.user.username }}</h1>
-                                        <p>Last message: {{ chat.updated_at }}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        {% else %}
-                            <div class='card'>
-                                <div class='row'>
-                                    <div class="col-2 pd">
-                                        <img src="{{ chat.user2.user.avatar.url }}" class="avatar" />
-                                    </div>
-                                    <div class="col-8">
-                                        <h3>{{ chat.user2.user.username }}</h1>
-                                        <p>Last message: {{ chat.updated_at }}</p>    
-                                    </div>
-                                </div>
-                            </div>
-                    {% endfor %}
-                {% else %}
-                    <p>No chat found</p>
-                {% endif %}
-            </div>
-            <div class="pagination-view">
-                <nav aria-label="...">
-                    <ul class="pagination">
-                        {% if page == 1 %}
-                            <li class="page-item">
-                                <a class="page-link page-disabled">Previous</a>
-                            </li>
-                        {% else %}
-                            <li class="page-item">
-                                <a class="page-link" href="/?page={{page - 1}}">Previous</a>
-                            </li>
-                        {% endif %}
-                        <li class="page-item">
-                            <a class="page-link cant-hover">{{page}}/{{total_page}}</a>
-                        </li>
-                        {% if page != total_page %}
-                            <li class="page-item">
-                                <a class="page-link" href="/?page={{page + 1}}">Next</a>
-                            </li>
-                        {% else %}
-                            <li class="page-item">
-                                <a class="page-link page-disabled" href="#">Next</a>
-                            </li>
-                        {% endif %}
-                    </ul>
-                </nav>
-            </div>
+            <div class="message-header"></div>
+            <div class="message-view"></div>
+            <div class="message-input-group"></div>
         </div>
     </div>
 
@@ -772,8 +676,8 @@
 
     <script>
         // Xử lý biến Jinja2 an toàn bằng String, không làm gãy JS khi mở file thô
-        // let rawLastPage = "{{ last_page|default:'' }}";
-        // let rawHasNext = "{{ has_next|yesno:'true,false' }}";
+        let rawLastPage = "{{ last_page|default:'' }}";
+        let rawHasNext = "{{ has_next|yesno:'true,false' }}";
 
         let lastPage = rawLastPage.includes("{{") ? "" : rawLastPage;
         let hasNext = rawHasNext.includes("{{") ? false : (rawHasNext === "true");
@@ -837,10 +741,12 @@
 
         const card = document.querySelector('.card');
 
+
+        card.addEventListener('mouseleave')
+
         card.addEventListener('click', () => {
             window.location.assign('/chat/{{}}')
         });
-
     </script>
 </body>
 </html>
