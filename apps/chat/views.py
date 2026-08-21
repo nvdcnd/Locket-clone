@@ -21,11 +21,12 @@ def chat_lists(request):
     try:
         page_obj = paginator.get_page(page)
     except PageNotAnInteger:
+        page = 1
         page_obj = paginator.page(1)
     except EmptyPage:
         page_obj = paginator.page(paginator.num_pages)
 
-    return render(request, 'chat/list.html', {'chat_lists':page_obj})
+    return render(request, 'chat/list.html', {'chat_lists':page_obj, 'total_page':paginator.count, 'page':page})
 
 @ratelimit(key='user_or_ip', rate='200/m')
 @login_required
