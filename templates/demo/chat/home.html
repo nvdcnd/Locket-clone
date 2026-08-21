@@ -432,6 +432,12 @@
             pointer-events: none;
         }
 
+        .avatar{
+            width:100px;
+            height:100px;
+            border-radius: 50%;
+        }
+
         .navbar-body {
             pointer-events: auto;
             width: 65%;
@@ -464,6 +470,70 @@
             list-style: none;
         }
 
+        .pd{
+            padding:10px;
+        }
+
+        .card{
+            position: relative;
+            width: 90%;
+            height:200px;
+            padding: 20px;
+            border-radius: 30px;
+            background-color: rgba(255, 184, 0, 0.08);
+            -webkit-backdrop-filter: blur(25px) saturate(200%);
+            backdrop-filter: blur(25px) saturate(200%);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 
+                0 20px 50px rgba(0, 0, 0, 0.5),
+                inset 0 1px 1px rgba(255, 255, 255, 0.4),
+                inset 0 -1px 2px rgba(255, 184, 0, 0.2);
+
+            color: #ffffff;
+            
+            /* Hiệu ứng mượt mà khi tương tác */
+            transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1),
+                        box-shadow 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+            cursor: pointer;
+        }
+
+        .col-2{
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .chat-list{
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50%;
+            border-radius: 30px 30px 0 0;
+            background: linear-gradient(
+                180deg, 
+                rgba(255, 255, 255, 0.25) 0%, 
+                rgba(255, 255, 255, 0) 100%
+            );
+            pointer-events: none;
+        }
+        .card:hover {
+            transform: scale(1.03) translateY(-5px);
+            box-shadow: 
+                0 30px 60px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.7),
+                inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+        }
+
         .navbar-items li i { font-size: 1.5rem; color: #ffffff; cursor: pointer; }
 
         /* RESPONSIVE MÀN HÌNH LỚN */
@@ -484,8 +554,27 @@
                 color: #fff; text-decoration: none; font-size: 1.1rem;
                 padding: 12px 20px; border-radius: 20px; transition: all 0.2s ease;
             }
-            .sidebar-link:hover, .sidebar-link.active {
-                background: rgba(255, 184, 0, 0.15); color: #FFB800;
+            .sidebar-link.active {
+                 background-color: rgba(255, 184, 0, 0.08);
+                -webkit-backdrop-filter: blur(25px) saturate(200%);
+                backdrop-filter: blur(25px) saturate(200%);
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                box-shadow: 
+                    0 20px 50px rgba(0, 0, 0, 0.5),
+                    inset 0 1px 1px rgba(255, 255, 255, 0.4),
+                    inset 0 -1px 2px rgba(255, 184, 0, 0.2);
+
+            }
+            .sidebar-link:hover{
+                background-color: rgba(255, 184, 0, 0.08);
+                -webkit-backdrop-filter: blur(25px) saturate(200%);
+                backdrop-filter: blur(25px) saturate(200%);
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                box-shadow: 
+                    0 20px 50px rgba(0, 0, 0, 0.5),
+                    inset 0 1px 1px rgba(255, 255, 255, 0.4),
+                    inset 0 -1px 2px rgba(255, 184, 0, 0.2);
+                transform: scale(1.03) translateY(-5px);
             }
             .app-layout {
                 margin-left: 250px; width: calc(100vw - 250px);
@@ -532,7 +621,7 @@
                 </div>
             </div>
             <div class="topbar-center">
-                <div class="dropdown">
+                <!--<div class="dropdown">
                     <a class="dropdown-toggle-custom glass-panel" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-people-fill text-warning"></i> Bạn bè
                     </a>
@@ -542,7 +631,7 @@
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="#"><i class="bi bi-person-plus me-2"></i>Thêm bạn mới</a></li>
                     </ul>
-                </div>
+                </div>-->
             </div>
             <div class="topbar-right">
                 <div class="btn-glass-circle glass-panel">
@@ -556,7 +645,6 @@
     <aside class="desktop-sidebar">
         <ul class="sidebar-menu">
             <li><a href="#" class="sidebar-link active"><i class="bi bi-camera-fill"></i> Camera</a></li>
-            <li><a href="#" class="sidebar-link"><i class="bi bi-grid-fill"></i> Feed Ảnh</a></li>
             <li><a href="#" class="sidebar-link"><i class="bi bi-chat-fill"></i> Tin nhắn</a></li>
             <li><a href="#" class="sidebar-link"><i class="bi bi-gear-fill"></i> Cài đặt</a></li>
         </ul>
@@ -564,63 +652,66 @@
 
     <!-- Main Container -->
     <div class="app-layout">
-        <div class="chat-list">
-            {% if chat_lists %}
-                {% for chat in chat_lists %}
-                    {% if user1.user.id = request.user.id %}
-                        <div class='card'>
-                            <div class='row'>
-                                <div class="col-2">
-                                    <img src="{{ chat.user1.user.avatar.url }}" class="avatar" />
-                                </div>
-                                <div class="col-8">
-                                    
-                                </div>
-                            </div>
-                        </div>
-                    {% else %}
-                        <div class='card'>
-                            <div class='row'>
-                                <div class="col-2">
-                                    <img src="{{ chat.user2.user.avatar.url }}" class="avatar" />
-                                </div>
-                                <div class="col-8">
-                                    <h3>{{ chat.user2.user.username }}</h1>
-                                    <p>Last message: {{ chat.updated_at }}</p>    
+        <div class="view-feed">
+            <div class="chat-list">
+                {% if chat_lists %}
+                    {% for chat in chat_lists %}
+                        {% if chat.user1.user.id = request.user.id %}
+                            <div class='card' id={{chat.id}}>
+                                <div class='row pd'>
+                                    <div class="col-2">
+                                        <img src="https://thumbs.dreamstime.com/b/vector-illustration-avatar-dummy-logo-collection-image-icon-stock-isolated-object-set-symbol-web-137160339.jpg" class="avatar" />
+                                    </div>
+                                    <div class="col-8">
+                                        <h3>{{ chat.user1.user.username }}</h1>
+                                        <p>Last message: {{ chat.updated_at }}</p>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                {% endfor %}
-            {% else %}
-                <p>No chat found</p>
-            {% endif %}
-        </div>
-        <div class="pagination-view">
-            <nav aria-label="...">
-                <ul class="pagination">
-                    {% if page == 1 %}
-                        <li class="page-item disabled">
-                            <a class="page-link">Previous</a>
+                        {% else %}
+                            <div class='card'>
+                                <div class='row'>
+                                    <div class="col-2 pd">
+                                        <img src="{{ chat.user2.user.avatar.url }}" class="avatar" />
+                                    </div>
+                                    <div class="col-8">
+                                        <h3>{{ chat.user2.user.username }}</h1>
+                                        <p>Last message: {{ chat.updated_at }}</p>    
+                                    </div>
+                                </div>
+                            </div>
+                    {% endfor %}
+                {% else %}
+                    <p>No chat found</p>
+                {% endif %}
+            </div>
+            <div class="pagination-view">
+                <nav aria-label="...">
+                    <ul class="pagination">
+                        {% if page == 1 %}
+                            <li class="page-item disabled">
+                                <a class="page-link">Previous</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item">
+                                <a class="page-link">Previous</a>
+                            </li>
+                        {% endif %}
+                        <li class="page-item active">
+                            <a class="page-link">Page {{page}} of {{total_page}}</a>
                         </li>
-                    {% else %}
-                        <li class="page-item">
-                            <a class="page-link">Previous</a>
-                        </li>
-                    {% endif %}
-                    <li class="page-item active">
-                        <a class="page-link">Page {{page}} of {{total_page}}</a>
-                    </li>
-                    {% if page != total_page %}
-                        <li class="page-item">
-                            <a class="page-link" href="#">Next</a>
-                        </li>
-                    {% else %}
-                        <li class="page-item disabled">
-                            <a class="page-link" href="#">Next</a>
-                        </li>
-                    {% endif %}
-                </ul>
-            </nav>
+                        {% if page != total_page %}
+                            <li class="page-item">
+                                <a class="page-link" href="#">Next</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <a class="page-link" href="#">Next</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
         </div>
     </div>
 
@@ -643,450 +734,79 @@
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-    <!-- App State & JS Logic -->
-    <!-- App State & JS Logic -->
-<script>
-    // Xử lý biến Jinja2 an toàn bằng String, không làm gãy JS khi mở file thô
-    let rawLastPage = "{{ last_page|default:'' }}";
-    let rawHasNext = "{{ has_next|yesno:'true,false' }}";
+    <script>
+        // Xử lý biến Jinja2 an toàn bằng String, không làm gãy JS khi mở file thô
+        let rawLastPage = "{{ last_page|default:'' }}";
+        let rawHasNext = "{{ has_next|yesno:'true,false' }}";
 
-    let lastPage = rawLastPage.includes("{{") ? "" : rawLastPage;
-    let hasNext = rawHasNext.includes("{{") ? false : (rawHasNext === "true");
+        let lastPage = rawLastPage.includes("{{") ? "" : rawLastPage;
+        let hasNext = rawHasNext.includes("{{") ? false : (rawHasNext === "true");
 
-    let isFetching = false;
-    let currentStream = null;
-    let isPreviewMode = false;
-    let capturedBase64Data = null;
+        let isFetching = false;
+        let currentStream = null;
+        let isPreviewMode = false;
+        let capturedBase64Data = null;
 
-    const fileInput = document.getElementById('file-input');
-    const toastPopover = document.getElementById('toast-popover');
-    const toastMessage = document.getElementById('toast-message');
-    const toastIcon = document.getElementById('toast-icon');
+        const fileInput = document.getElementById('file-input');
+        const toastPopover = document.getElementById('toast-popover');
+        const toastMessage = document.getElementById('toast-message');
+        const toastIcon = document.getElementById('toast-icon');
+        
 
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
                 }
             }
+            return cookieValue;
         }
-        return cookieValue;
-    }
 
-    function showToast(message, isSuccess = true) {
-        if (!toastMessage || !toastIcon || !toastPopover) return;
-        toastMessage.textContent = message;
-        toastIcon.className = isSuccess ? "bi bi-check-circle-fill text-warning fs-5" : "bi bi-x-circle-fill text-danger fs-5";
-        toastPopover.classList.add('show');
-        setTimeout(() => toastPopover.classList.remove('show'), 5000);
-    }
+        // ----------------------------------------------------
+        // 1. LOGIC BẬT/TẮT BOTTOM NAVBAR BẰNG FAB BUTTON
+        // ----------------------------------------------------
+        const fabBtn = document.getElementById('fab-nav-trigger');
+        const bottomNav = document.getElementById('bottom-nav');
+        const navCameraBtn = document.getElementById('nav-camera-btn');
 
-    // ----------------------------------------------------
-    // 1. LOGIC BẬT/TẮT BOTTOM NAVBAR BẰNG FAB BUTTON
-    // ----------------------------------------------------
-    const fabBtn = document.getElementById('fab-nav-trigger');
-    const bottomNav = document.getElementById('bottom-nav');
-    const navCameraBtn = document.getElementById('nav-camera-btn');
-
-    if (fabBtn && bottomNav) {
-        fabBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            bottomNav.classList.toggle('active');
-        });
-
-        // Bấm ra ngoài đóng Navbar
-        document.addEventListener('click', (e) => {
-            if (!bottomNav.contains(e.target) && !fabBtn.contains(e.target)) {
-                bottomNav.classList.remove('active');
-            }
-        });
-    }
-
-    if (navCameraBtn) {
-        navCameraBtn.addEventListener('click', () => {
-            bottomNav?.classList.remove('active');
-            document.getElementById('main-feed')?.scrollTo({
-                top: 0,
-                behavior: 'smooth'
+        if (fabBtn && bottomNav) {
+            fabBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                bottomNav.classList.toggle('active');
             });
-        });
-    }
 
-    // ----------------------------------------------------
-    // 2. WEBCAM LOGIC
-    // ----------------------------------------------------
-    async function startCamera(videoElement) {
-        if (!videoElement) return;
-        try {
-            if (!currentStream || !currentStream.active) {
-                currentStream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: "user", aspectRatio: 1 },
-                    audio: false
+            // Bấm ra ngoài đóng Navbar
+            document.addEventListener('click', (e) => {
+                if (!bottomNav.contains(e.target) && !fabBtn.contains(e.target)) {
+                    bottomNav.classList.remove('active');
+                }
+            });
+        }
+
+        if (navCameraBtn) {
+            navCameraBtn.addEventListener('click', () => {
+                bottomNav?.classList.remove('active');
+                document.getElementById('main-feed')?.scrollTo({
+                    top: 0,
+                    behavior: 'smooth'
                 });
-            }
-            videoElement.srcObject = currentStream;
-            await videoElement.play();
-        } catch (err) {
-            console.warn("Chưa cấp quyền webcam hoặc mở qua file://:", err);
-        }
-    }
-
-    function stopCamera() {
-        if (currentStream) {
-            currentStream.getTracks().forEach(track => track.stop());
-            currentStream = null;
-        }
-    }
-
-    // ----------------------------------------------------
-    // 3. PREVIEW MODE
-    // ----------------------------------------------------
-    function enterPreviewMode(base64Image) {
-        isPreviewMode = true;
-        capturedBase64Data = base64Image;
-
-        const isDesktop = window.innerWidth >= 992;
-        const camFrame = document.getElementById(isDesktop ? 'desktop-cam-frame' : 'mobile-cam-frame');
-        const previewFrame = document.getElementById(isDesktop ? 'desktop-preview-frame' : 'mobile-preview-frame');
-        const canvas = document.getElementById(isDesktop ? 'desktop-canvas' : 'mobile-canvas');
-        const shutterBtn = document.getElementById(isDesktop ? 'desktop-shutter-btn' : 'mobile-shutter-btn');
-        const cancelBtn = document.getElementById(isDesktop ? 'desktop-cancel-btn' : 'mobile-cancel-btn');
-
-        const img = new Image();
-        img.onload = () => {
-            canvas.width = img.width;
-            canvas.height = img.height;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0);
-        };
-        img.src = base64Image;
-
-        camFrame?.classList.add('d-none');
-        previewFrame?.classList.remove('d-none');
-
-        if (shutterBtn) {
-            shutterBtn.classList.add('mode-send');
-            shutterBtn.innerHTML = '<i class="bi bi-send-fill"></i>';
-        }
-        if (cancelBtn) {
-            cancelBtn.innerHTML = '<i class="bi bi-x-lg text-danger fs-5"></i>';
-        }
-    }
-
-    function exitPreviewMode() {
-        isPreviewMode = false;
-        capturedBase64Data = null;
-
-        const isDesktop = window.innerWidth >= 992;
-        const camFrame = document.getElementById(isDesktop ? 'desktop-cam-frame' : 'mobile-cam-frame');
-        const previewFrame = document.getElementById(isDesktop ? 'desktop-preview-frame' : 'mobile-preview-frame');
-        const shutterBtn = document.getElementById(isDesktop ? 'desktop-shutter-btn' : 'mobile-shutter-btn');
-        const cancelBtn = document.getElementById(isDesktop ? 'desktop-cancel-btn' : 'mobile-cancel-btn');
-        const captionInput = document.getElementById(isDesktop ? 'desktop-caption-input' : 'mobile-caption-input');
-
-        if(captionInput) captionInput.value = '';
-
-        camFrame?.classList.remove('d-none');
-        previewFrame?.classList.add('d-none');
-
-        if (shutterBtn) {
-            shutterBtn.classList.remove('mode-send');
-            shutterBtn.innerHTML = '';
-        }
-        if (cancelBtn) {
-            cancelBtn.innerHTML = '<i class="bi bi-arrow-repeat"></i>';
+            });
         }
 
-        const activeVideo = isDesktop ? document.getElementById('webcam-desktop') : document.getElementById('webcam-mobile');
-        startCamera(activeVideo);
-    }
+        const card = document.querySelector('.card');
 
-    // ----------------------------------------------------
-    // 4. CAPTURE & UPLOAD TRIGGER
-    // ----------------------------------------------------
-    document.querySelectorAll('.shutter-trigger').forEach(btn => {
-        btn.addEventListener('click', () => {
-            if (!isPreviewMode) {
-                const isDesktop = window.innerWidth >= 992;
-                const activeVideo = isDesktop ? document.getElementById('webcam-desktop') : document.getElementById('webcam-mobile');
 
-                if (!activeVideo || !activeVideo.srcObject) {
-                    alert("Camera chưa sẵn sàng (hoặc đang mở file HTML thô)!");
-                    return;
-                }
+        card.addEventListener('mouseleave')
 
-                const tempCanvas = document.createElement('canvas');
-                tempCanvas.width = activeVideo.videoWidth || 400;
-                tempCanvas.height = activeVideo.videoHeight || 400;
-                const ctx = tempCanvas.getContext('2d');
-
-                ctx.translate(tempCanvas.width, 0);
-                ctx.scale(-1, 1);
-                ctx.drawImage(activeVideo, 0, 0, tempCanvas.width, tempCanvas.height);
-
-                enterPreviewMode(tempCanvas.toDataURL('image/jpeg', 0.9));
-            } else {
-                handleSendPost();
-            }
+        card.addEventListener('click', () => {
+            window.location.assign('/chat/{{}}')
         });
-    });
-
-    document.querySelectorAll('.upload-btn-trigger').forEach(btn => {
-        btn.addEventListener('click', () => fileInput?.click());
-    });
-
-    fileInput?.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (event) => enterPreviewMode(event.target.result);
-        reader.readAsDataURL(file);
-    });
-
-    document.querySelectorAll('.action-cancel-btn').forEach(btn => {
-        btn.addEventListener('click', () => { if (isPreviewMode) exitPreviewMode(); });
-    });
-
-    // ----------------------------------------------------
-    // 5. API ĐĂNG ẢNH MỚI (/image/create)
-    // ----------------------------------------------------
-    function handleSendPost() {
-        if (!capturedBase64Data) return;
-
-        const isDesktop = window.innerWidth >= 992;
-        const captionInput = document.getElementById(isDesktop ? 'desktop-caption-input' : 'mobile-caption-input');
-        const captionText = captionInput ? captionInput.value : '';
-
-        const payloadData = { image: capturedBase64Data, text: captionText };
-
-        exitPreviewMode();
-
-        if (!isDesktop) {
-            document.getElementById('main-feed')?.scrollTo({
-                top: window.innerHeight,
-                behavior: 'smooth'
-            });
-        }
-
-        uploadImageInBackground(payloadData);
-    }
-
-    async function uploadImageInBackground(payload) {
-        try {
-            const response = await fetch('/image/create', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken')
-                },
-                body: JSON.stringify(payload)
-            });
-
-            const resData = await response.json();
-
-            if (response.ok) {
-                showToast(resData.success || "Đã đăng khoảnh khắc mới! 🌟", true);
-                location.reload();
-            } else {
-                showToast(resData.error || "Gửi ảnh thất bại!", false);
-            }
-        } catch (err) {
-            console.error("Async Upload Error:", err);
-            showToast("Lỗi kết nối máy chủ!", false);
-        }
-    }
-
-    // ----------------------------------------------------
-    // 6. API THẢ EMOJI (/image/<int:id>/emoji)
-    // ----------------------------------------------------
-    async function sendEmoji(imageId, emojiChar) {
-        try {
-            const response = await fetch(`/image/${imageId}/emoji`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken')
-                },
-                body: JSON.stringify({ emoji: emojiChar })
-            });
-
-            const resData = await response.json();
-            if (response.ok) {
-                showToast(`Đã thả ${emojiChar} thành công!`, true);
-            } else {
-                showToast("Không thể thả cảm xúc!", false);
-            }
-        } catch (err) {
-            console.error("Lỗi khi thả emoji:", err);
-            showToast("Lỗi kết nối máy chủ!", false);
-        }
-    }
-
-    // ----------------------------------------------------
-    // 7. API REPLY MSG (/chat/to/<int:receiver_id>/reply/image/<int:img_id>)
-    // ----------------------------------------------------
-    function handleReplyKeypress(event, receiverId, imgId) {
-        if (event.key === 'Enter') {
-            event.preventDefault();
-            sendReplyMessage(receiverId, imgId);
-        }
-    }
-
-    async function sendReplyMessage(receiverId, imgId) {
-        const inputElem = document.getElementById(`reply-input-${imgId}`);
-        if (!inputElem) return;
-
-        const messageText = inputElem.value.trim();
-        if (!messageText) return;
-
-        try {
-            const response = await fetch(`/chat/to/${receiverId}/reply/image/${imgId}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken')
-                },
-                body: JSON.stringify({ message: messageText })
-            });
-
-            const resData = await response.json();
-            if (response.ok) {
-                showToast("Đã gửi tin nhắn!", true);
-                inputElem.value = '';
-            } else {
-                showToast("Không thể gửi tin nhắn!", false);
-            }
-        } catch (err) {
-            console.error("Lỗi gửi tin nhắn:", err);
-            showToast("Lỗi kết nối máy chủ!", false);
-        }
-    }
-
-    // ----------------------------------------------------
-    // 8. INFINITE SCROLL FETCH API (/image/fetch/<last_page>/10/)
-    // ----------------------------------------------------
-    async function fetchNextFeedPage() {
-        if (!hasNext || isFetching) return;
-        isFetching = true;
-
-        try {
-            const response = await fetch(`/image/fetch/${lastPage}/10/`);
-            const data = await response.json();
-
-            if (response.ok) {
-                hasNext = data.has_next;
-                lastPage = data.last_page;
-                appendFeedPosts(data.images);
-            }
-        } catch (err) {
-            console.error("Lỗi Infinite Scroll:", err);
-        } finally {
-            isFetching = false;
-        }
-    }
-
-    function appendFeedPosts(posts) {
-        const feedContainer = document.getElementById('feed-list');
-        if (!feedContainer || !Array.isArray(posts)) return;
-
-        const htmlContent = posts.map(post => `
-            <section class="card-item">
-                <div class="feed-post">
-                    <div class="feed-img-wrapper">
-                        <img src="${post.image_url}" class="feed-img" alt="Feed image">
-                        ${post.text ? `<div class="feed-overlay-caption">${post.text}</div>` : ''}
-                    </div>
-
-                    <div class="feed-user-info">
-                        <img src="${post.avatar_url || 'https://picsum.photos/100/100'}" class="user-avatar" alt="Avatar">
-                        <div class="user-meta">
-                            <span class="user-name">${post.creater || 'User'}</span>
-                            <span class="post-time">• ${post.create_at || ''}</span>
-                        </div>
-                    </div>
-
-                    <div class="feed-emoji-bar">
-                        <button class="emoji-btn" onclick="sendEmoji('${post.id}', '💛')">💛</button>
-                        <button class="emoji-btn" onclick="sendEmoji('${post.id}', '🔥')">🔥</button>
-                        <button class="emoji-btn" onclick="sendEmoji('${post.id}', '😂')">😂</button>
-                        <button class="emoji-btn" onclick="sendEmoji('${post.id}', '😮')">😮</button>
-                        <button class="emoji-btn" onclick="sendEmoji('${post.id}', '😭')">😭</button>
-                    </div>
-
-                    <div class="feed-reply-bar">
-                        <input type="text" class="reply-input" placeholder="Gửi tin nhắn..." id="reply-input-${post.id}" onkeypress="handleReplyKeypress(event, '${post.creater}', '${post.id}')">
-                        <button class="btn-reply-send" onclick="sendReplyMessage('${post.creater}', '${post.id}')">
-                            <i class="bi bi-send-fill"></i>
-                        </button>
-                    </div>
-                </div>
-            </section>
-        `).join('');
-
-        feedContainer.insertAdjacentHTML('beforeend', htmlContent);
-    }
-
-    // ----------------------------------------------------
-    // 9. OBSERVERS
-    // ----------------------------------------------------
-    const endCard = document.getElementById('end-card');
-    const mainScrollContainer = document.getElementById('main-feed');
-
-    if (endCard && mainScrollContainer) {
-        const scrollObserver = new IntersectionObserver((entries) => {
-            entries.forEach((entry) => {
-                if (entry.isIntersecting && hasNext) {
-                    fetchNextFeedPage();
-                }
-            });
-        }, { root: mainScrollContainer, threshold: 0.2 });
-
-        scrollObserver.observe(endCard);
-    }
-
-    const cameraCard = document.getElementById('camera-card');
-    const mobileVideo = document.getElementById('webcam-mobile');
-
-    if (cameraCard && mainScrollContainer) {
-        const camObserver = new IntersectionObserver((entries) => {
-            entries.forEach((entry) => {
-                if (entry.isIntersecting) {
-                    if (!isPreviewMode) startCamera(mobileVideo);
-                } else {
-                    stopCamera();
-                }
-            });
-        }, { root: mainScrollContainer, threshold: 0.5 });
-
-        camObserver.observe(cameraCard);
-    }
-
-    const desktopVideo = document.getElementById('webcam-desktop');
-    const desktopCamBtn = document.getElementById('desktop-cam-toggle');
-    let isDesktopCamOn = true;
-
-    if (window.innerWidth >= 992) {
-        startCamera(desktopVideo);
-    }
-
-    desktopCamBtn?.addEventListener('click', () => {
-        const icon = desktopCamBtn.querySelector('i');
-        if (isDesktopCamOn) {
-            stopCamera();
-            if (desktopVideo) desktopVideo.srcObject = null;
-            if (icon) icon.className = 'bi bi-camera-video-off-fill text-danger';
-            isDesktopCamOn = false;
-        } else {
-            startCamera(desktopVideo);
-            if (icon) icon.className = 'bi bi-camera-video-fill text-warning';
-            isDesktopCamOn = true;
-        }
-    });
-</script>
+    </script>
 </body>
 </html>
