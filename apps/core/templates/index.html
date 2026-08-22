@@ -1,16 +1,210 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-  <meta charset="utf-8">
-  <title>Locket - Chia sẻ khoảnh khắc</title>
-</head>
-<body>
-  <h1>Locket</h1>
-  <p>Chia sẻ khoảnh khắc với bạn bè của bạn.</p>
-  <p>
-    <a href="{% url 'login' %}">Đăng nhập</a> |
-    <a href="{% url 'signup' %}">Đăng ký</a> |
-    <a href="{% url 'forgot_password' %}">Quên mật khẩu</a>
-  </p>
-</body>
-</html>
+{% extends 'base.html' %}
+
+{% block title %}Locket — Chia sẻ khoảnh khắc{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        height: 100vh;
+        height: 100dvh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
+        background-color: #121212;
+    }
+
+    .landing-card {
+        width: min(880px, 92vw);
+        z-index: 1;
+    }
+
+    .landing-hero {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        height: 100%;
+        text-align: left;
+        gap: 12px;
+        padding: 10px;
+    }
+
+    .landing-hero .brand {
+        font-size: 2.6rem;
+        font-weight: 800;
+        line-height: 1.1;
+    }
+
+    .landing-hero .brand span { color: var(--amber); }
+
+    .landing-hero p { color: var(--text-muted); font-size: 0.98rem; }
+
+    .hero-badges {
+        display: flex;
+        gap: 10px;
+        margin-top: 6px;
+        flex-wrap: wrap;
+    }
+
+    .hero-badge {
+        font-size: 0.78rem;
+        font-weight: 600;
+        padding: 6px 14px;
+        border-radius: 20px;
+        background: var(--panel-white);
+        border: 1px solid var(--glass-border);
+    }
+
+    .divider-amber {
+        background-color: var(--amber);
+        height: 3px;
+        width: 100%;
+        border-radius: 2px;
+        margin: 14px 0 10px;
+    }
+
+    .auth-links { font-size: 0.88rem; color: var(--text-muted); }
+    .auth-links a { color: var(--amber); text-decoration: underline; cursor: pointer; }
+
+    .modal-content {
+        background-color: var(--glass-bg);
+        -webkit-backdrop-filter: blur(25px) saturate(200%);
+        backdrop-filter: blur(25px) saturate(200%);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 30px;
+        box-shadow:
+            0 20px 50px rgba(0, 0, 0, 0.5),
+            inset 0 1px 1px rgba(255, 255, 255, 0.4),
+            inset 0 -1px 2px rgba(255, 184, 0, 0.2);
+        color: #ffffff;
+    }
+
+    @media (max-width: 767px) {
+        .landing-hero { text-align: center; align-items: center; margin-bottom: 18px; }
+        .landing-hero .brand { font-size: 2rem; }
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+    <div class="glow"></div>
+
+    <div class="glass-card landing-card">
+        <div class="row g-4 align-items-center" style="position:relative;">
+            <!-- Hero -->
+            <div class="col-md-6">
+                <div class="landing-hero">
+                    <div class="brand">Locket <span>💛</span></div>
+                    <p>Chia sẻ khoảnh khắc mỗi ngày với những người bạn thân nhất — chụp, gửi, trò chuyện, tất cả trong một nơi.</p>
+                    <div class="hero-badges">
+                        <span class="hero-badge">📸 Khoảnh khắc</span>
+                        <span class="hero-badge">💬 Nhắn tin realtime</span>
+                        <span class="hero-badge">💛 Bạn thân</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form đăng nhập -->
+            <div class="col-md-6" style="position:relative;">
+                <form method="post" action="{% url 'login' %}">
+                    {% csrf_token %}
+                    <div class="form-group-locket">
+                        <label class="form-label-locket" for="login-email">Email</label>
+                        <input class="form-control-locket" type="email" name="email" id="login-email" required autocomplete="email">
+                    </div>
+                    <div class="form-group-locket">
+                        <label class="form-label-locket" for="login-password">Mật khẩu</label>
+                        <input class="form-control-locket" type="password" name="password" id="login-password" required autocomplete="current-password">
+                    </div>
+                    <button type="submit" class="btn-amber w-100">Đăng nhập</button>
+                </form>
+
+                <div class="divider-amber"></div>
+
+                <p class="auth-links mb-1">
+                    Chưa có tài khoản?
+                    <a data-bs-toggle="modal" data-bs-target="#signup-modal">Đăng ký ngay</a>
+                </p>
+                <p class="auth-links mb-0">
+                    <a href="{% url 'forgot_password' %}">Quên mật khẩu?</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal đăng ký -->
+    <div class="modal fade" id="signup-modal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-body p-4">
+                    <h2 class="fw-bold mb-1 text-center">Tạo tài khoản</h2>
+                    <p class="text-center mb-4" style="color:var(--text-muted);font-size:0.9rem;">Chỉ mất 30 giây để bắt đầu chia sẻ 💛</p>
+
+                    <form method="post" action="{% url 'signup' %}" enctype="multipart/form-data" id="signup-form">
+                        {% csrf_token %}
+                        <div class="row">
+                            <div class="col-lg-6">
+                                <div class="form-group-locket">
+                                    <label class="form-label-locket" for="su-email">Email</label>
+                                    <input class="form-control-locket" type="email" name="email" id="su-email" required autocomplete="email">
+                                </div>
+                            </div>
+                            <div class="col-lg-6">
+                                <div class="form-group-locket">
+                                    <label class="form-label-locket" for="su-username">Tên hiển thị</label>
+                                    <input class="form-control-locket" type="text" name="username" id="su-username" required maxlength="150" autocomplete="username">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-lg-6">
+                                <div class="form-group-locket">
+                                    <label class="form-label-locket">Ảnh đại diện</label>
+                                    <label class="file-input-wrapper" for="su-avatar">
+                                        <input type="file" id="su-avatar" name="image" class="actual-file-input" accept="image/*" required>
+                                        <span class="custom-file-button">Chọn ảnh</span>
+                                        <span class="file-chosen-text" id="su-file-name">Chưa chọn ảnh nào</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-lg-6">
+                                <div class="form-group-locket">
+                                    <label class="form-label-locket" for="su-password">Mật khẩu</label>
+                                    <input class="form-control-locket" type="password" name="password" id="su-password" required minlength="6" autocomplete="new-password">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group-locket">
+                            <label class="form-label-locket" for="su-password2">Nhập lại mật khẩu</label>
+                            <input class="form-control-locket" type="password" id="su-password2" required autocomplete="new-password">
+                        </div>
+                        <button type="submit" class="btn-amber w-100">Đăng ký</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Hiển thị tên file avatar đã chọn
+    const suAvatar = document.getElementById('su-avatar');
+    const suFileName = document.getElementById('su-file-name');
+    suAvatar.addEventListener('change', function () {
+        suFileName.textContent = (this.files && this.files.length)
+            ? this.files[0].name
+            : 'Chưa chọn ảnh nào';
+    });
+
+    // Kiểm tra nhập lại mật khẩu trước khi submit (backend không có bước này)
+    document.getElementById('signup-form').addEventListener('submit', function (e) {
+        const p1 = document.getElementById('su-password').value;
+        const p2 = document.getElementById('su-password2').value;
+        if (p1 !== p2) {
+            e.preventDefault();
+            showToast('Mật khẩu nhập lại không khớp!', false);
+        }
+    });
+</script>
+{% endblock %}

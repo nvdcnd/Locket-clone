@@ -1,8 +1,9 @@
 from django.db import models
 from django.contrib.auth.models import User
+from apps.core.models import BaseModel
 
 # Create your models here.
-class Forgot_password_request(models.Model):
+class Forgot_password_request(BaseModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="user_forgot_password")
     code = models.TextField()
     expire = models.DateTimeField()

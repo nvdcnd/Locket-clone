@@ -967,7 +967,7 @@
     }
 
     // ----------------------------------------------------
-    // 6. API THẢ EMOJI (/image/<int:id>/emoji)
+    // 6. API THẢ EMOJI (/image/<uuid:id>/emoji)
     // ----------------------------------------------------
     async function sendEmoji(imageId, emojiChar) {
         try {
@@ -993,7 +993,7 @@
     }
 
     // ----------------------------------------------------
-    // 7. API REPLY MSG (/chat/to/<int:receiver_id>/reply/image/<int:img_id>)
+    // 7. API REPLY MSG (/chat/to/<uuid:receiver_id>/reply/image/<uuid:img_id>)
     // ----------------------------------------------------
     function handleReplyKeypress(event, receiverId, imgId) {
         if (event.key === 'Enter') {

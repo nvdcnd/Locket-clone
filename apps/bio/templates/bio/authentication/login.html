@@ -1,19 +1,54 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-  <meta charset="utf-8">
-  <title>Đăng nhập</title>
-</head>
-<body>
-  <h1>Đăng nhập</h1>
-  <form method="post" action="{% url 'login' %}">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Đăng nhập</button>
-  </form>
-  <p>
-    <a href="{% url 'signup' %}">Chưa có tài khoản? Đăng ký</a> |
-    <a href="{% url 'forgot_password' %}">Quên mật khẩu</a>
-  </p>
-</body>
-</html>
+{% extends 'base.html' %}
+
+{% block title %}Đăng nhập • Locket{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        height: 100vh;
+        height: 100dvh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
+        background-color: #121212;
+        padding: 16px;
+    }
+
+    .auth-card { width: min(420px, 92vw); z-index: 1; text-align: center; }
+    .auth-card h1 { font-size: 1.8rem; font-weight: 800; margin-bottom: 4px; }
+    .auth-card h1 span { color: var(--amber); }
+    .auth-sub { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 22px; }
+    .auth-links { font-size: 0.88rem; color: var(--text-muted); margin-top: 16px; }
+    .auth-links a { color: var(--amber); text-decoration: underline; }
+</style>
+{% endblock %}
+
+{% block body %}
+    <div class="glow"></div>
+
+    <div class="glass-card auth-card">
+        <div style="position:relative;">
+            <h1>Locket <span>💛</span></h1>
+            <p class="auth-sub">Đăng nhập để tiếp tục chia sẻ khoảnh khắc</p>
+
+            {% if error %}<div class="auth-error"><i class="bi bi-exclamation-circle-fill"></i> {{ error }}</div>{% endif %}
+
+            <form method="post" action="{% url 'login' %}">
+                {% csrf_token %}
+                <div class="form-group-locket">
+                    <label class="form-label-locket" for="email">Email</label>
+                    <input class="form-control-locket" type="email" name="email" id="email" required autocomplete="email">
+                </div>
+                <div class="form-group-locket">
+                    <label class="form-label-locket" for="password">Mật khẩu</label>
+                    <input class="form-control-locket" type="password" name="password" id="password" required autocomplete="current-password">
+                </div>
+                <button type="submit" class="btn-amber w-100">Đăng nhập</button>
+            </form>
+
+            <p class="auth-links mb-1">Chưa có tài khoản? <a href="{% url 'signup' %}">Đăng ký</a></p>
+            <p class="auth-links mb-0"><a href="{% url 'forgot_password' %}">Quên mật khẩu?</a></p>
+        </div>
+    </div>
+{% endblock %}

@@ -1,15 +1,93 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-  <meta charset="utf-8">
-  <title>Đặt mật khẩu mới</title>
-</head>
-<body>
-  <h1>Đặt mật khẩu mới</h1>
-  <form method="post">
-    {% csrf_token %}
-    <input type="password" name="password" placeholder="Mật khẩu mới" required>
-    <button type="submit">Đổi mật khẩu</button>
-  </form>
-</body>
-</html>
+{% extends 'base.html' %}
+
+{% block title %}Đặt mật khẩu mới • Locket{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        height: 100vh;
+        height: 100dvh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
+        background-color: #121212;
+        padding: 16px;
+    }
+
+    .auth-card { width: min(420px, 92vw); z-index: 1; text-align: center; }
+    .auth-icon {
+        width: 72px; height: 72px;
+        border-radius: 50%;
+        margin: 0 auto 16px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.9rem;
+        color: var(--amber);
+        background: rgba(255, 184, 0, 0.14);
+        border: 1px solid rgba(255, 184, 0, 0.4);
+    }
+    .auth-card h1 { font-size: 1.5rem; font-weight: 800; margin-bottom: 6px; }
+    .auth-sub { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 22px; }
+</style>
+{% endblock %}
+
+{% block body %}
+    <div class="glow"></div>
+
+    <div class="glass-card auth-card">
+        <div style="position:relative;">
+            <div class="auth-icon"><i class="bi bi-shield-lock-fill"></i></div>
+            <h1>Đặt mật khẩu mới</h1>
+            <p class="auth-sub">Mật khẩu mới sẽ được dùng cho lần đăng nhập tiếp theo.</p>
+
+            <form id="change-form" method="post">
+                {% csrf_token %}
+                <div class="form-group-locket">
+                    <label class="form-label-locket" for="password">Mật khẩu mới</label>
+                    <input class="form-control-locket" type="password" name="password" id="password"
+                           required minlength="6" autocomplete="new-password">
+                </div>
+                <div class="form-group-locket">
+                    <label class="form-label-locket" for="password2">Nhập lại mật khẩu mới</label>
+                    <input class="form-control-locket" type="password" id="password2"
+                           required autocomplete="new-password">
+                </div>
+                <button type="submit" class="btn-amber w-100" id="submit-btn">
+                    <i class="bi bi-check-lg"></i> Đổi mật khẩu
+                </button>
+            </form>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.getElementById('change-form').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const p1 = document.getElementById('password').value;
+        const p2 = document.getElementById('password2').value;
+        if (p1 !== p2) {
+            showToast('Mật khẩu nhập lại không khớp!', false);
+            return;
+        }
+
+        const btn = document.getElementById('submit-btn');
+        btn.disabled = true;
+        try {
+            const res = await fetch(window.location.href, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrfToken() },
+                body: new FormData(this)
+            });
+            if (res.redirected) { window.location.assign(res.url); return; }
+            let msg = 'Yêu cầu không hợp lệ hoặc đã hết hạn!';
+            try { const d = await res.json(); if (d.error) msg = d.error; } catch (err) {}
+            showToast(msg, false);
+        } catch (err) {
+            showToast('Lỗi kết nối máy chủ!', false);
+        }
+        btn.disabled = false;
+    });
+</script>
+{% endblock %}

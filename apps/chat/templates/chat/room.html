@@ -10,15 +10,13 @@
 
     <!--
     ============================================================
-    PHÒNG CHAT — cần view `room()` truyền các biến context sau:
-      room_id                   : id phòng chat
-      my_bio_id                 : Bio.id của người đang đăng nhập
-      receiver                  : Bio của người còn lại (receiver.user.username, receiver.avatar)
-      receiver_user_id          : User.id của người còn lại (dùng cho endpoint /chat/to/<id>/)
-      receiver_last_read_msg_id : id tin nhắn cuối người kia đã đọc (hiện "Đã xem")
-      chat_messages             : list Messages (cũ -> mới)
-    Mở file trực tiếp trên trình duyệt (không qua Django) sẽ tự chạy
-    chế độ xem thử với dữ liệu mẫu.
+    PHÒNG CHAT — view `room()` truyền các biến context sau (mọi id đều là UUID):
+      room_id          : id phòng chat
+      my_bio_id        : Bio.id của người đang đăng nhập
+      receiver         : Bio của người còn lại (receiver.user.username, receiver.avatar)
+      receiver_bio_id  : Bio.id của người còn lại (dùng cho endpoint /chat/to/<bio_id>/)
+      seen_msg_id      : id tin cuối CỦA MÌNH mà người kia đã đọc -> hiện "Đã xem" dưới tin đó
+      chat_messages    : list Messages (cũ -> mới)
     ============================================================
     -->
 
@@ -551,10 +549,12 @@
 
     <!-- Sidebar Desktop -->
     <aside class="desktop-sidebar">
+        <a href="{% url 'index' %}" style="font-size:1.5rem;font-weight:800;color:#FFB800;text-decoration:none;padding:0 20px;">Locket <span style="font-size:1rem">💛</span></a>
         <ul class="sidebar-menu">
-            <li><a href="/" class="sidebar-link"><i class="bi bi-camera-fill"></i> Camera</a></li>
-            <li><a href="/chat/" class="sidebar-link active"><i class="bi bi-chat-fill"></i> Tin nhắn</a></li>
-            <li><a href="#" class="sidebar-link"><i class="bi bi-gear-fill"></i> Cài đặt</a></li>
+            <li><a href="{% url 'index' %}" class="sidebar-link"><i class="bi bi-camera-fill"></i> Khoảnh khắc</a></li>
+            <li><a href="{% url 'chat_list' %}" class="sidebar-link active"><i class="bi bi-chat-fill"></i> Tin nhắn</a></li>
+            <li><a href="{% url 'friends_list' %}" class="sidebar-link"><i class="bi bi-people-fill"></i> Bạn bè</a></li>
+            <li><a href="{% url 'bio' %}" class="sidebar-link"><i class="bi bi-person-fill"></i> Cá nhân</a></li>
         </ul>
     </aside>
 
@@ -564,7 +564,7 @@
 
             <!-- Topbar phòng chat -->
             <header class="chat-topbar glass-panel">
-                <a href="/chat/" class="btn-glass-circle glass-panel" title="Quay lại">
+                <a href="{% url 'chat_list' %}" class="btn-glass-circle glass-panel" title="Quay lại">
                     <i class="bi bi-arrow-left"></i>
                 </a>
                 <div class="peer-info" id="peer-info">
@@ -611,6 +611,9 @@
                     </div>
                     <i class="bi bi-reply-fill reply-hint"></i>
                 </div>
+                {% if seen_msg_id and m.id == seen_msg_id %}
+                <div class="seen-label">Đã xem</div>
+                {% endif %}
                 {% endfor %}
 
                 <!-- Bong bóng đang nhập -->
@@ -661,20 +664,15 @@
 
     <script>
         // ----------------------------------------------------
-        // BIẾN TỪ DJANGO — có fallback để mở file thô không gãy
+        // BIẾN TỪ DJANGO — mọi id là UUID nên giữ dạng chuỗi, KHÔNG parseInt (sẽ ra NaN)
         // ----------------------------------------------------
-        function djVar(raw, fallback) {
-            return raw.includes('{'+'{') ? fallback : raw;
-        }
-
-        const IS_LIVE = !"{{ room_id }}".includes('{'+'{');
-        const ROOM_ID = djVar("{{ room_id }}", "0");
-        const MY_BIO_ID = parseInt(djVar("{{ my_bio_id|default:'0' }}", "1"), 10);
-        const MY_USER_ID = parseInt(djVar("{{ request.user.id|default:'0' }}", "1"), 10);
-        const MY_NAME = djVar("{{ request.user.username|default:'Bạn' }}", "Bạn");
-        const RECEIVER_USER_ID = djVar("{{ receiver_user_id|default:'0' }}", "2");
-        const RECEIVER_NAME = djVar("{{ receiver.user.username|default:'Bạn bè' }}", "Minh Anh");
-        const RECEIVER_LAST_READ = parseInt(djVar("{{ receiver_last_read_msg_id|default:'0' }}", "2"), 10);
+        // (UUID chỉ gồm hex và '-', an toàn để in thẳng; tên người dùng phải qua escapejs)
+        const ROOM_ID = "{{ room_id }}";
+        const MY_BIO_ID = "{{ my_bio_id }}";
+        const MY_USER_ID = {{ request.user.id }};
+        const MY_NAME = "{{ request.user.username|escapejs }}";
+        const RECEIVER_BIO_ID = "{{ receiver_bio_id }}";
+        const RECEIVER_NAME = "{{ receiver.user.username|escapejs }}";
 
         const messagesEl = document.getElementById('messages');
         const typingRow = document.getElementById('typing-row');
@@ -796,8 +794,9 @@
         }
 
         function refreshCompact(row) {
-            // Tin liên tiếp cùng một phía thì sát nhau hơn
-            const prev = row.previousElementSibling;
+            // Tin liên tiếp cùng một phía thì sát nhau hơn (bỏ qua nhãn "Đã xem" nằm giữa)
+            let prev = row.previousElementSibling;
+            if (prev && prev.classList.contains('seen-label')) prev = prev.previousElementSibling;
             if (prev && prev.classList.contains('msg-row') && !prev.classList.contains('typing-row')
                 && prev.classList.contains('mine') === row.classList.contains('mine')) {
                 row.classList.add('compact');
@@ -836,7 +835,7 @@
             if (rendered.has(id)) return;
             rendered.add(id);
 
-            const mine = data.sender_id === MY_BIO_ID;
+            const mine = String(data.sender_id) === MY_BIO_ID;
             if (!mine) setPeerTyping(false);
 
             let quote = null;
@@ -856,7 +855,6 @@
         }
 
         function connectWS() {
-            if (!IS_LIVE) return;
             ws = new WebSocket(
                 (window.location.protocol === 'https:' ? 'wss://' : 'ws://')
                 + window.location.host + '/ws/chat/' + ROOM_ID
@@ -885,7 +883,7 @@
         }
 
         function emitTyping(state) {
-            if (!IS_LIVE || !ws || ws.readyState !== WebSocket.OPEN) return;
+            if (!ws || ws.readyState !== WebSocket.OPEN) return;
             if (typingSent === state) return;
             typingSent = state;
             ws.send(JSON.stringify({ type: 'typing', is_typing: state }));
@@ -907,11 +905,10 @@
             btnSend.disabled = true;
             msgInput.focus();
 
-            if (!IS_LIVE) { mockSend(text, target); return; }
-
+            // receiver_id trong URL là Bio.id (UUID) của người nhận
             const url = target
-                ? '/chat/to/' + RECEIVER_USER_ID + '/reply/message/' + target.id
-                : '/chat/to/' + RECEIVER_USER_ID + '/';
+                ? '/chat/to/' + RECEIVER_BIO_ID + '/reply/message/' + target.id
+                : '/chat/to/' + RECEIVER_BIO_ID + '/';
 
             fetch(url, {
                 method: 'POST',
@@ -1019,79 +1016,16 @@
         });
 
         // ----------------------------------------------------
-        // CHẾ ĐỘ XEM THỬ (mở file thô, không qua Django)
-        // ----------------------------------------------------
-        function mockSend(text, target) {
-            const id = 'mock-' + Date.now();
-            rendered.add(id);
-            appendRow(buildRow({
-                id, text, mine: true,
-                quote: target ? { targetId: target.id, name: target.name, text: target.text } : null
-            }), { forceScroll: true });
-
-            setTimeout(() => setPeerTyping(true), 800);
-            setTimeout(() => {
-                setPeerTyping(false);
-                const rid = 'mock-' + (Date.now() + 1);
-                rendered.add(rid);
-                appendRow(buildRow({ id: rid, text: 'Nghe hay đó! 😄', mine: false }));
-            }, 2600);
-        }
-
-        function bootMock() {
-            document.title = RECEIVER_NAME + ' • Locket Chat';
-            document.getElementById('peer-info').innerHTML =
-                '<div class="peer-avatar peer-initial">' + RECEIVER_NAME[0].toUpperCase() + '</div>' +
-                '<div class="peer-meta"><div class="peer-name">' + RECEIVER_NAME + '</div>' +
-                '<div class="peer-status" id="peer-status"><span class="typing-text">đang nhập</span></div></div>';
-
-            // Xóa phần chữ template thô rồi bơm hội thoại mẫu
-            messagesEl.innerHTML = '';
-            messagesEl.appendChild(typingRow);
-
-            const sep = document.createElement('div');
-            sep.className = 'day-sep';
-            sep.innerHTML = '<span>Hôm nay</span>';
-            messagesEl.insertBefore(sep, typingRow);
-
-            const demo = [
-                { id: 1, mine: false, text: 'Ê, cuối tuần này đi cà phê không? ☕' },
-                { id: 2, mine: true,  text: 'Đi chứ! Quán cũ hay chỗ mới mở gần trường?' },
-                { id: 3, mine: false, text: 'Chỗ mới đi, nghe nói view đẹp lắm',
-                  quote: { targetId: 2, name: RECEIVER_NAME, text: 'Đi chứ! Quán cũ hay chỗ mới mở gần trường?' } },
-                { id: 4, mine: true,  text: 'Chốt luôn, 9h sáng thứ 7 nhé 📸' }
-            ];
-            demo.forEach(m => {
-                rendered.add(String(m.id));
-                const row = buildRow(m);
-                messagesEl.insertBefore(row, typingRow);
-                refreshCompact(row);
-            });
-        }
-
-        // ----------------------------------------------------
         // KHỞI ĐỘNG
         // ----------------------------------------------------
         function boot() {
-            if (!IS_LIVE) {
-                bootMock();
-            } else {
-                document.title = RECEIVER_NAME + ' • Locket Chat';
-                messagesEl.querySelectorAll('.msg-row[data-id]').forEach(r => {
-                    rendered.add(r.dataset.id);
-                    refreshCompact(r);
-                });
-                // Trạng thái "Đã xem" cho tin cuối của mình
-                const myRows = messagesEl.querySelectorAll('.msg-row.mine[data-id]');
-                const lastMine = myRows[myRows.length - 1];
-                if (lastMine && parseInt(lastMine.dataset.id, 10) <= RECEIVER_LAST_READ) {
-                    const seen = document.createElement('div');
-                    seen.className = 'seen-label';
-                    seen.textContent = 'Đã xem';
-                    lastMine.insertAdjacentElement('afterend', seen);
-                }
-                connectWS();
-            }
+            document.title = RECEIVER_NAME + ' • Locket Chat';
+            messagesEl.querySelectorAll('.msg-row[data-id]').forEach(r => {
+                rendered.add(r.dataset.id);
+                refreshCompact(r);
+            });
+            // Nhãn "Đã xem" đã được server render (seen_msg_id) ngay dưới tin cuối của mình.
+            connectWS();
 
             if (!messagesEl.querySelector('.msg-row[data-id]')) {
                 emptyState.classList.add('show');

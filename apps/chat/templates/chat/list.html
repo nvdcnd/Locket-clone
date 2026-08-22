@@ -1,24 +1,167 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-  <meta charset="utf-8">
-  <title>Đoạn chat</title>
-</head>
-<body>
-  <h1>Đoạn chat của bạn</h1>
-  <ul>
-    {% for room in chat_lists %}
-      <li>
-        <a href="{% url 'chat_room' room.id %}">
-          Phòng #{{ room.id }}: {{ room.user1.user.username }} và {{ room.user2.user.username }}
+{% extends 'app_base.html' %}
+
+{% block title %}Tin nhắn • Locket{% endblock %}
+
+{% block nav_chat %}active{% endblock %}
+{% block mnav_chat %}active{% endblock %}
+
+{% block topbar_center %}
+<div class="glass-panel" style="height:42px;padding:0 20px;border-radius:21px;font-weight:600;font-size:0.9rem;display:flex;align-items:center;gap:8px;">
+    <i class="bi bi-chat-fill text-warning"></i> Tin nhắn
+</div>
+{% endblock %}
+
+{% block page_css %}
+<style>
+    .chat-list-wrap {
+        height: 100%;
+        overflow-y: auto;
+        padding: 100px 16px 110px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .chat-card {
+        width: min(560px, 100%);
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 16px 20px;
+        text-decoration: none;
+        color: #ffffff;
+        border-radius: 30px;
+    }
+
+    .chat-card:hover { color: #ffffff; }
+
+    .chat-avatar { width: 56px; height: 56px; min-width: 56px; font-size: 1.3rem; }
+
+    .chat-info { flex: 1; min-width: 0; position: relative; z-index: 1; }
+
+    .chat-name-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+    }
+
+    .chat-name {
+        font-weight: 700;
+        font-size: 1.05rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .chat-time { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; }
+
+    .chat-preview {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-top: 3px;
+    }
+
+    .chat-card.unread .chat-preview { color: #ffffff; font-weight: 600; }
+    .chat-card.unread .chat-name { color: var(--amber); }
+
+    .unread-dot {
+        width: 11px;
+        height: 11px;
+        min-width: 11px;
+        border-radius: 50%;
+        background: var(--amber);
+        box-shadow: 0 0 10px var(--amber-glow);
+    }
+
+    .empty-box {
+        width: min(420px, 100%);
+        text-align: center;
+        padding: 44px 28px;
+        border-radius: 40px;
+        margin-top: 8vh;
+    }
+
+    .pager {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-top: 8px;
+    }
+
+    .pager a, .pager span {
+        padding: 9px 20px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #ffffff;
+        text-decoration: none;
+    }
+
+    .pager a:hover { color: var(--amber); }
+    .pager .disabled { color: rgba(255, 255, 255, 0.35); pointer-events: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="chat-list-wrap thin-scroll">
+
+    {# View đã tính sẵn: other (người kia), last_msg (tin cuối theo created_at), unread (theo mốc *_last_read_at) #}
+    {% for item in chat_items %}
+        {% with room=item.room other=item.other last_msg=item.last_msg %}
+        <a href="{% url 'chat_room' room.id %}"
+           class="glass-card hoverable chat-card {% if item.unread %}unread{% endif %}">
+            {% if other.avatar %}
+                <img src="{{ other.avatar.url }}" class="avatar-circle chat-avatar" alt="">
+            {% else %}
+                <div class="avatar-initial chat-avatar">{{ other.user.username|first|upper }}</div>
+            {% endif %}
+            <div class="chat-info">
+                <div class="chat-name-row">
+                    <span class="chat-name">{{ other.user.username }}</span>
+                    {% if last_msg %}<span class="chat-time">{{ last_msg.created_at|date:"H:i d/m" }}</span>{% endif %}
+                </div>
+                <div class="chat-preview">
+                    {% if last_msg %}
+                        {% if last_msg.sender_id == mybio_id %}Bạn: {% endif %}{% if last_msg.image_reply_id %}📷 {% endif %}{{ last_msg.message|truncatechars:46 }}
+                    {% else %}
+                        Hãy gửi lời chào 👋
+                    {% endif %}
+                </div>
+            </div>
+            {% if item.unread %}
+                <div class="unread-dot"></div>
+            {% endif %}
         </a>
-      </li>
+        {% endwith %}
     {% empty %}
-      <li>Chưa có đoạn chat nào.</li>
+        <div class="glass-card empty-box">
+            <i class="bi bi-chat-heart text-warning display-3 mb-3 d-block"></i>
+            <h5 class="fw-bold mb-2">Chưa có cuộc trò chuyện nào</h5>
+            <p class="mb-3" style="color:var(--text-muted);font-size:0.9rem;">Nhắn tin cho một người bạn để bắt đầu nhé!</p>
+            <a href="{% url 'friends_list' %}" class="btn-amber"><i class="bi bi-people-fill"></i> Xem bạn bè</a>
+        </div>
     {% endfor %}
-  </ul>
-  {% if chat_lists.has_next %}
-    <a href="?page={{ chat_lists.next_page_number }}">Trang sau</a>
-  {% endif %}
-</body>
-</html>
+
+    {% if chat_lists.has_other_pages %}
+    <div class="pager">
+        {% if chat_lists.has_previous %}
+            <a class="glass-panel" href="?page={{ chat_lists.previous_page_number }}"><i class="bi bi-chevron-left"></i> Trước</a>
+        {% else %}
+            <span class="glass-panel disabled"><i class="bi bi-chevron-left"></i> Trước</span>
+        {% endif %}
+        <span class="glass-panel">{{ chat_lists.number }}/{{ chat_lists.paginator.num_pages }}</span>
+        {% if chat_lists.has_next %}
+            <a class="glass-panel" href="?page={{ chat_lists.next_page_number }}">Sau <i class="bi bi-chevron-right"></i></a>
+        {% else %}
+            <span class="glass-panel disabled">Sau <i class="bi bi-chevron-right"></i></span>
+        {% endif %}
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

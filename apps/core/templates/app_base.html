@@ -1,0 +1,277 @@
+{% extends 'base.html' %}
+{% comment %}
+============================================================
+APP BASE — khung cho các trang đã đăng nhập.
+Blocks cho trang con:
+  page_css, page_js  — CSS/JS riêng của trang
+  content            — nội dung chính (nằm trong .app-layout)
+  topbar_center      — phần giữa topbar
+  nav_feed / nav_chat / nav_friends / nav_me — đặt 'active' để highlight
+============================================================
+{% endcomment %}
+
+{% block extra_css %}
+<style>
+    body { overflow: hidden; }
+
+    /* ===== Topbar nổi ===== */
+    .topbar {
+        position: fixed;
+        top: 20px;
+        left: 0;
+        width: 100vw;
+        z-index: 1000;
+        padding: 0 20px;
+        pointer-events: none;
+    }
+
+    .topbar-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+    }
+
+    .topbar-left, .topbar-right { flex: 1; display: flex; align-items: center; }
+    .topbar-left { justify-content: flex-start; }
+    .topbar-right { justify-content: flex-end; }
+    .topbar-center { display: flex; justify-content: center; }
+    .topbar-content > * { pointer-events: auto; }
+
+    .topbar-avatar {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        font-size: 1.05rem;
+    }
+
+    /* ===== Sidebar desktop ===== */
+    .desktop-sidebar { display: none; }
+
+    /* ===== Layout chính ===== */
+    .app-layout {
+        width: 100%;
+        height: 100vh;
+        height: 100dvh;
+    }
+
+    /* ===== FAB + bottom nav mobile ===== */
+    .mobile-fab-btn {
+        position: fixed;
+        bottom: 25px;
+        right: 20px;
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        z-index: 1040;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.3rem;
+        color: var(--amber);
+        cursor: pointer;
+        transition: transform 0.2s ease;
+    }
+
+    .mobile-fab-btn:active { transform: scale(0.9); }
+
+    .mobile-navbar {
+        position: fixed;
+        bottom: 25px;
+        left: 0;
+        width: 100%;
+        z-index: 1050;
+        display: flex;
+        justify-content: center;
+        pointer-events: none;
+    }
+
+    .navbar-body {
+        pointer-events: auto;
+        width: 75%;
+        max-width: 330px;
+        height: 65px;
+        border-radius: 35px;
+        transition: transform 0.35s cubic-bezier(0.1, 1, 0.1, 1), opacity 0.3s ease;
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(120%);
+    }
+
+    .navbar-body.active {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateY(0);
+    }
+
+    .navbar-items {
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        width: 100%;
+        height: 100%;
+        padding: 0;
+        margin: 0;
+        list-style: none;
+    }
+
+    .navbar-items li a {
+        font-size: 1.4rem;
+        color: #ffffff;
+        text-decoration: none;
+        display: flex;
+        padding: 8px;
+    }
+
+    .navbar-items li a.active { color: var(--amber); }
+
+    /* ===== Responsive desktop ===== */
+    @media (min-width: 992px) {
+        .mobile-navbar, .mobile-fab-btn { display: none !important; }
+
+        .desktop-sidebar {
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0; left: 0;
+            width: 250px;
+            height: 100vh;
+            padding: 100px 20px 30px 30px;
+            z-index: 900;
+        }
+
+        .sidebar-brand {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--amber);
+            text-decoration: none;
+            padding: 0 20px;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 0;
+            margin-top: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            color: #fff;
+            text-decoration: none;
+            font-size: 1.05rem;
+            padding: 12px 20px;
+            border-radius: 20px;
+            transition: all 0.2s ease;
+        }
+
+        .sidebar-link.active, .sidebar-link:hover {
+            background-color: var(--glass-bg);
+            -webkit-backdrop-filter: blur(25px) saturate(200%);
+            backdrop-filter: blur(25px) saturate(200%);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow:
+                0 20px 50px rgba(0, 0, 0, 0.5),
+                inset 0 1px 1px rgba(255, 255, 255, 0.4),
+                inset 0 -1px 2px rgba(255, 184, 0, 0.2);
+            color: #fff;
+        }
+
+        .sidebar-link:hover { transform: scale(1.03) translateY(-3px); }
+
+        .app-layout {
+            margin-left: 250px;
+            width: calc(100vw - 250px);
+        }
+    }
+</style>
+{% block page_css %}{% endblock %}
+{% endblock %}
+
+{% block body %}
+    <!-- Topbar -->
+    <header class="topbar">
+        <div class="topbar-content">
+            <div class="topbar-left">
+                <a href="{% url 'bio' %}" class="btn-glass-circle glass-panel topbar-avatar" title="Trang cá nhân">
+                    {% with mybio=request.user.bio_user.first %}
+                        {% if mybio.avatar %}
+                            <img src="{{ mybio.avatar.url }}" alt="" class="avatar-circle" style="width:100%;height:100%;border-width:0;">
+                        {% else %}
+                            <i class="bi bi-person-fill"></i>
+                        {% endif %}
+                    {% endwith %}
+                </a>
+            </div>
+            <div class="topbar-center">{% block topbar_center %}{% endblock %}</div>
+            <div class="topbar-right">
+                <form method="post" action="{% url 'logout' %}" class="logout-form">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-glass-circle glass-panel" title="Đăng xuất">
+                        <i class="bi bi-box-arrow-right"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </header>
+
+    <!-- Sidebar desktop -->
+    <aside class="desktop-sidebar">
+        <a href="{% url 'index' %}" class="sidebar-brand">Locket <span style="font-size:1rem">💛</span></a>
+        <ul class="sidebar-menu">
+            <li><a href="{% url 'index' %}" class="sidebar-link {% block nav_feed %}{% endblock %}"><i class="bi bi-camera-fill"></i> Khoảnh khắc</a></li>
+            <li><a href="{% url 'chat_list' %}" class="sidebar-link {% block nav_chat %}{% endblock %}"><i class="bi bi-chat-fill"></i> Tin nhắn</a></li>
+            <li><a href="{% url 'friends_list' %}" class="sidebar-link {% block nav_friends %}{% endblock %}"><i class="bi bi-people-fill"></i> Bạn bè</a></li>
+            <li><a href="{% url 'bio' %}" class="sidebar-link {% block nav_me %}{% endblock %}"><i class="bi bi-person-fill"></i> Cá nhân</a></li>
+        </ul>
+    </aside>
+
+    <!-- Nội dung trang -->
+    <div class="app-layout">
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- FAB mở bottom nav (mobile) -->
+    <div class="mobile-fab-btn glass-panel" id="fab-nav-trigger" title="Menu">
+        <i class="bi bi-grid-fill"></i>
+    </div>
+
+    <!-- Bottom nav (mobile) -->
+    <div class="mobile-navbar">
+        <div class="navbar-body glass-panel" id="bottom-nav">
+            <ul class="navbar-items">
+                <li><a href="{% url 'index' %}" class="{% block mnav_feed %}{% endblock %}" title="Khoảnh khắc"><i class="bi bi-camera-fill"></i></a></li>
+                <li><a href="{% url 'chat_list' %}" class="{% block mnav_chat %}{% endblock %}" title="Tin nhắn"><i class="bi bi-chat-fill"></i></a></li>
+                <li><a href="{% url 'friends_list' %}" class="{% block mnav_friends %}{% endblock %}" title="Bạn bè"><i class="bi bi-people-fill"></i></a></li>
+                <li><a href="{% url 'bio' %}" class="{% block mnav_me %}{% endblock %}" title="Cá nhân"><i class="bi bi-person-fill"></i></a></li>
+            </ul>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Bật/tắt bottom navbar bằng FAB
+    (function () {
+        const fabBtn = document.getElementById('fab-nav-trigger');
+        const bottomNav = document.getElementById('bottom-nav');
+        if (!fabBtn || !bottomNav) return;
+
+        fabBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            bottomNav.classList.toggle('active');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!bottomNav.contains(e.target) && !fabBtn.contains(e.target)) {
+                bottomNav.classList.remove('active');
+            }
+        });
+    })();
+</script>
+{% block page_js %}{% endblock %}
+{% endblock %}

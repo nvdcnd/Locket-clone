@@ -1,23 +1,852 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-  <meta charset="utf-8">
-  <title>Bảng tin</title>
-</head>
-<body>
-  <h1>Bảng tin</h1>
-  <ul>
-    {% for image in images %}
-      <li>
-        <img src="{{ image.image.url }}" alt="{{ image.text }}" width="200">
-        <p>{{ image.text }}</p>
-      </li>
-    {% empty %}
-      <li>Chưa có ảnh nào. Hãy đăng ảnh đầu tiên của bạn!</li>
-    {% endfor %}
-  </ul>
-  {% if has_next %}
-    <p data-last-page="{{ last_page|date:'c' }}">Kéo xuống để xem thêm...</p>
-  {% endif %}
-</body>
-</html>
+{% extends 'app_base.html' %}
+
+{% block title %}Khoảnh khắc • Locket{% endblock %}
+
+{% block nav_feed %}active{% endblock %}
+{% block mnav_feed %}active{% endblock %}
+
+{% block topbar_center %}
+<a href="{% url 'friends_list' %}" class="glass-panel" style="height:42px;padding:0 20px;border-radius:21px;color:#fff;font-weight:600;font-size:0.9rem;display:flex;align-items:center;gap:8px;text-decoration:none;">
+    <i class="bi bi-people-fill text-warning"></i> Bạn bè
+</a>
+{% endblock %}
+
+{% block page_css %}
+<style>
+    /* ===== Feed scroll snap (mobile-first) ===== */
+    .view-feed {
+        height: 100vh;
+        height: 100dvh;
+        overflow-y: scroll;
+        scroll-snap-type: y mandatory;
+        scroll-behavior: smooth;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .card-item {
+        height: 100vh;
+        height: 100dvh;
+        width: 100%;
+        scroll-snap-align: start;
+        scroll-snap-stop: always;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 80px 20px 100px 20px;
+    }
+
+    /* ===== Camera & preview ===== */
+    .camera-container-box {
+        width: 100%;
+        max-width: 380px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .camera-frame, .preview-canvas-wrapper {
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        border-radius: 45px;
+        background: #111;
+        border: 2px solid rgba(255, 255, 255, 0.15);
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .camera-video, .preview-canvas {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .camera-video { transform: scaleX(-1); }
+
+    .preview-caption-input {
+        position: absolute;
+        bottom: 18px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 85%;
+        padding: 8px 18px;
+        border-radius: 25px;
+        background: rgba(0, 0, 0, 0.55);
+        -webkit-backdrop-filter: blur(15px);
+        backdrop-filter: blur(15px);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        color: #ffffff;
+        font-size: 0.95rem;
+        font-weight: 500;
+        text-align: center;
+        outline: none;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .preview-caption-input::placeholder { color: rgba(255, 255, 255, 0.6); }
+
+    .camera-actions {
+        margin-top: 20px;
+        display: flex;
+        align-items: center;
+        gap: 30px;
+    }
+
+    .btn-shutter {
+        width: 72px;
+        height: 72px;
+        border-radius: 50%;
+        border: 4px solid var(--amber);
+        background: transparent;
+        box-shadow: 0 0 20px var(--amber-glow);
+        transition: all 0.2s ease;
+        position: relative;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .btn-shutter::after {
+        content: '';
+        position: absolute;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        width: 54px; height: 54px;
+        background: var(--amber);
+        border-radius: 50%;
+        transition: all 0.2s ease;
+    }
+
+    .btn-shutter:active { transform: scale(0.92); }
+
+    .btn-shutter.mode-send { background: var(--amber); }
+    .btn-shutter.mode-send::after { display: none; }
+    .btn-shutter.mode-send i {
+        font-size: 1.8rem;
+        color: #000;
+        z-index: 2;
+    }
+
+    /* ===== Feed post ===== */
+    .feed-post {
+        width: 100%;
+        max-width: 380px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .feed-img-wrapper {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        border-radius: 45px;
+        overflow: hidden;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .feed-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .feed-overlay-caption {
+        position: absolute;
+        bottom: 18px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: max-content;
+        max-width: 85%;
+        padding: 8px 18px;
+        border-radius: 25px;
+        background: rgba(0, 0, 0, 0.55);
+        -webkit-backdrop-filter: blur(15px);
+        backdrop-filter: blur(15px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: #ffffff;
+        font-size: 0.95rem;
+        font-weight: 500;
+        text-align: center;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .post-delete-btn {
+        position: absolute;
+        top: 14px;
+        right: 14px;
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+        font-size: 1rem;
+        opacity: 0.85;
+    }
+
+    .post-delete-btn:hover { color: #ff6b6b; opacity: 1; }
+
+    .feed-user-info {
+        margin-top: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .user-avatar {
+        width: 30px;
+        height: 30px;
+        min-width: 30px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 1.5px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .user-avatar.avatar-initial { font-size: 0.8rem; border-width: 1.5px; }
+
+    .user-meta {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.9rem;
+    }
+
+    .user-name { font-weight: 700; color: #ffffff; }
+    .post-time { color: var(--text-muted); font-size: 0.8rem; }
+
+    /* Emoji bar */
+    .feed-emoji-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+        width: 100%;
+        max-width: 320px;
+        padding: 6px 16px;
+        margin: 10px 0;
+        border-radius: 25px;
+        background: var(--panel-white);
+        -webkit-backdrop-filter: blur(15px);
+        backdrop-filter: blur(15px);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .emoji-btn {
+        background: transparent;
+        border: none;
+        font-size: 1.3rem;
+        cursor: pointer;
+        transition: transform 0.15s ease;
+        line-height: 1;
+    }
+
+    .emoji-btn:hover, .emoji-btn:active { transform: scale(1.4); }
+
+    /* Reply bar */
+    .feed-reply-bar {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--panel-white);
+        -webkit-backdrop-filter: blur(15px);
+        backdrop-filter: blur(15px);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 25px;
+        padding: 4px 6px 4px 16px;
+    }
+
+    .reply-input {
+        flex: 1;
+        min-width: 0;
+        background: transparent;
+        border: none;
+        outline: none;
+        color: #ffffff;
+        font-size: 0.88rem;
+    }
+
+    .reply-input::placeholder { color: rgba(255, 255, 255, 0.5); }
+
+    .btn-reply-send {
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
+        border-radius: 50%;
+        border: none;
+        background: var(--amber);
+        color: #000000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: transform 0.15s ease;
+        font-size: 0.9rem;
+    }
+
+    .btn-reply-send:active { transform: scale(0.9); }
+
+    /* End card / empty card */
+    .end-card-box {
+        width: 100%;
+        max-width: 380px;
+        aspect-ratio: 1 / 1;
+        border-radius: 45px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 30px;
+    }
+
+    /* ===== Desktop 2 cột ===== */
+    @media (min-width: 992px) {
+        .app-layout {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding-top: 80px;
+        }
+
+        .desktop-container {
+            display: flex;
+            width: 100%;
+            max-width: 900px;
+            height: calc(100vh - 100px);
+            gap: 40px;
+        }
+
+        .left-column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .right-column {
+            flex: 1;
+            height: 100%;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        .view-feed { height: auto; overflow-y: visible; scroll-snap-type: none; }
+        .card-item { height: auto; padding: 0 0 40px 0; scroll-snap-align: none; }
+        #camera-card { display: none; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+    <!-- Input file ẩn (upload từ thư viện) -->
+    <input type="file" id="file-input" accept="image/*" style="display: none;">
+
+    <div class="desktop-container">
+
+        <!-- Cột camera (desktop) -->
+        <div class="left-column d-none d-lg-flex">
+            <div class="camera-container-box">
+                <div class="camera-frame position-relative" id="desktop-cam-frame">
+                    <video id="webcam-desktop" class="camera-video" autoplay playsinline muted></video>
+                    <button id="desktop-cam-toggle" class="btn-glass-circle glass-panel position-absolute top-0 end-0 m-3 border-0" title="Tắt/Mở Camera">
+                        <i class="bi bi-camera-video-fill text-warning"></i>
+                    </button>
+                </div>
+
+                <div class="preview-canvas-wrapper d-none" id="desktop-preview-frame">
+                    <canvas id="desktop-canvas" class="preview-canvas"></canvas>
+                    <input type="text" class="preview-caption-input" placeholder="Viết dòng trạng thái..." id="desktop-caption-input">
+                </div>
+
+                <div class="camera-actions">
+                    <div class="btn-glass-circle glass-panel upload-btn-trigger" title="Chọn ảnh từ máy"><i class="bi bi-images"></i></div>
+                    <button class="btn-shutter shutter-trigger" id="desktop-shutter-btn" title="Chụp / Gửi"></button>
+                    <div class="btn-glass-circle glass-panel action-cancel-btn" id="desktop-cancel-btn" title="Chụp lại"><i class="bi bi-arrow-repeat"></i></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cột feed -->
+        <div class="right-column thin-scroll">
+            <main class="view-feed" id="main-feed">
+
+                <!-- Card camera (mobile) -->
+                <section class="card-item d-lg-none" id="camera-card">
+                    <div class="camera-container-box">
+                        <div class="camera-frame" id="mobile-cam-frame">
+                            <video id="webcam-mobile" class="camera-video" autoplay playsinline muted></video>
+                        </div>
+
+                        <div class="preview-canvas-wrapper d-none" id="mobile-preview-frame">
+                            <canvas id="mobile-canvas" class="preview-canvas"></canvas>
+                            <input type="text" class="preview-caption-input" placeholder="Viết dòng trạng thái..." id="mobile-caption-input">
+                        </div>
+
+                        <div class="camera-actions">
+                            <div class="btn-glass-circle glass-panel upload-btn-trigger" title="Chọn ảnh từ máy"><i class="bi bi-images"></i></div>
+                            <button class="btn-shutter shutter-trigger" id="mobile-shutter-btn" title="Chụp / Gửi"></button>
+                            <div class="btn-glass-circle glass-panel action-cancel-btn" id="mobile-cancel-btn" title="Chụp lại"><i class="bi bi-arrow-repeat"></i></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Feed posts (server render 10 ảnh đầu) -->
+                <div id="feed-list">
+                    {% for img in images %}
+                    <section class="card-item">
+                        <div class="feed-post">
+
+                            <div class="feed-img-wrapper">
+                                <img src="{{ img.image.url }}" class="feed-img" alt="Khoảnh khắc của {{ img.user.user.username }}">
+                                {% if img.text %}
+                                <div class="feed-overlay-caption">{{ img.text }}</div>
+                                {% endif %}
+                                {% if img.user.user_id == request.user.id %}
+                                <button class="btn-glass-circle glass-panel post-delete-btn" data-id="{{ img.id }}" title="Xóa ảnh này">
+                                    <i class="bi bi-trash3-fill"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+
+                            <div class="feed-user-info">
+                                {% if img.user.avatar %}
+                                    <img src="{{ img.user.avatar.url }}" class="user-avatar" alt="">
+                                {% else %}
+                                    <div class="user-avatar avatar-initial">{{ img.user.user.username|first|upper }}</div>
+                                {% endif %}
+                                <div class="user-meta">
+                                    <span class="user-name">{{ img.user.user.username }}</span>
+                                    <span class="post-time">• {{ img.create_at|date:"H:i, d/m/Y" }}</span>
+                                </div>
+                            </div>
+
+                            <div class="feed-emoji-bar">
+                                <button class="emoji-btn" data-id="{{ img.id }}" data-emoji="💛">💛</button>
+                                <button class="emoji-btn" data-id="{{ img.id }}" data-emoji="🔥">🔥</button>
+                                <button class="emoji-btn" data-id="{{ img.id }}" data-emoji="😂">😂</button>
+                                <button class="emoji-btn" data-id="{{ img.id }}" data-emoji="😮">😮</button>
+                                <button class="emoji-btn" data-id="{{ img.id }}" data-emoji="😭">😭</button>
+                            </div>
+
+                            {% if img.user.user_id != request.user.id %}
+                            <div class="feed-reply-bar">
+                                <input type="text" class="reply-input" placeholder="Nhắn cho {{ img.user.user.username }}..."
+                                       data-receiver="{{ img.user.id }}" data-img="{{ img.id }}">
+                                <button class="btn-reply-send" data-receiver="{{ img.user.id }}" data-img="{{ img.id }}" title="Gửi">
+                                    <i class="bi bi-send-fill"></i>
+                                </button>
+                            </div>
+                            {% endif %}
+
+                        </div>
+                    </section>
+                    {% endfor %}
+                </div>
+
+                <!-- Card cuối -->
+                <section class="card-item" id="end-card">
+                    <div class="end-card-box glass-panel">
+                        {% if images %}
+                            <i class="bi bi-check2-circle text-warning display-3 mb-3"></i>
+                            <h5 class="fw-bold mb-2">Mọi thứ đã xong!</h5>
+                            <p class="text-secondary fs-6 mb-0">Bạn đã bắt kịp tất cả khoảnh khắc mới nhất của bạn bè rồi đó ✨</p>
+                        {% else %}
+                            <i class="bi bi-camera text-warning display-3 mb-3"></i>
+                            <h5 class="fw-bold mb-2">Chưa có khoảnh khắc nào</h5>
+                            <p class="text-secondary fs-6 mb-3">Chụp tấm ảnh đầu tiên, hoặc kết bạn để xem khoảnh khắc của mọi người!</p>
+                            <a href="{% url 'friends_list' %}" class="btn-amber"><i class="bi bi-person-plus-fill"></i> Kết bạn ngay</a>
+                        {% endif %}
+                    </div>
+                </section>
+
+            </main>
+        </div>
+    </div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+    // ===== Biến từ server =====
+    const MY_USER_ID = {{ request.user.id }};
+    let lastPage = "{{ last_page|date:'c'|default:'' }}";
+    let hasNext = {{ has_next|yesno:'true,false' }};
+
+    let isFetching = false;
+    let currentStream = null;
+    let isPreviewMode = false;
+    let capturedBase64Data = null;
+
+    const fileInput = document.getElementById('file-input');
+    const mainFeed = document.getElementById('main-feed');
+    const EMOJIS = ['💛', '🔥', '😂', '😮', '😭'];
+
+    // ===== Dựng DOM an toàn (chống XSS cho nội dung người dùng) =====
+    function el(tag, className) {
+        const node = document.createElement(tag);
+        if (className) node.className = className;
+        return node;
+    }
+
+    function fmtTime(iso) {
+        const d = new Date(iso);
+        if (isNaN(d)) return '';
+        const p = (n) => String(n).padStart(2, '0');
+        return p(d.getHours()) + ':' + p(d.getMinutes()) + ', ' + p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear();
+    }
+
+    function buildPost(post) {
+        const section = el('section', 'card-item');
+        const wrap = el('div', 'feed-post');
+
+        // Ảnh + caption + nút xóa
+        const imgWrap = el('div', 'feed-img-wrapper');
+        const img = el('img', 'feed-img');
+        img.src = post.image_url;
+        img.alt = '';
+        imgWrap.appendChild(img);
+        if (post.text) {
+            const cap = el('div', 'feed-overlay-caption');
+            cap.textContent = post.text;
+            imgWrap.appendChild(cap);
+        }
+        if (post.creater_user_id === MY_USER_ID) {
+            const del = el('button', 'btn-glass-circle glass-panel post-delete-btn');
+            del.dataset.id = post.id;
+            del.title = 'Xóa ảnh này';
+            del.innerHTML = '<i class="bi bi-trash3-fill"></i>';
+            imgWrap.appendChild(del);
+        }
+        wrap.appendChild(imgWrap);
+
+        // Người đăng
+        const info = el('div', 'feed-user-info');
+        if (post.avatar_url) {
+            const av = el('img', 'user-avatar');
+            av.src = post.avatar_url;
+            av.alt = '';
+            info.appendChild(av);
+        } else {
+            const av = el('div', 'user-avatar avatar-initial');
+            av.textContent = (post.creater_name || '?')[0].toUpperCase();
+            info.appendChild(av);
+        }
+        const meta = el('div', 'user-meta');
+        const name = el('span', 'user-name');
+        name.textContent = post.creater_name || 'Người dùng';
+        const time = el('span', 'post-time');
+        time.textContent = '• ' + fmtTime(post.create_at);
+        meta.appendChild(name);
+        meta.appendChild(time);
+        info.appendChild(meta);
+        wrap.appendChild(info);
+
+        // Emoji bar
+        const bar = el('div', 'feed-emoji-bar');
+        EMOJIS.forEach(e => {
+            const b = el('button', 'emoji-btn');
+            b.dataset.id = post.id;
+            b.dataset.emoji = e;
+            b.textContent = e;
+            bar.appendChild(b);
+        });
+        wrap.appendChild(bar);
+
+        // Reply bar (ảnh của người khác)
+        if (post.creater_user_id && post.creater_user_id !== MY_USER_ID) {
+            const rb = el('div', 'feed-reply-bar');
+            const input = el('input', 'reply-input');
+            input.type = 'text';
+            input.placeholder = 'Nhắn cho ' + (post.creater_name || 'bạn') + '...';
+            input.dataset.receiver = post.creater;   // Bio.id (UUID) -> /chat/to/<bio_id>/reply/image/<img_id>
+            input.dataset.img = post.id;
+            const send = el('button', 'btn-reply-send');
+            send.dataset.receiver = post.creater;
+            send.dataset.img = post.id;
+            send.title = 'Gửi';
+            send.innerHTML = '<i class="bi bi-send-fill"></i>';
+            rb.appendChild(input);
+            rb.appendChild(send);
+            wrap.appendChild(rb);
+        }
+
+        section.appendChild(wrap);
+        return section;
+    }
+
+    // ===== API: thả emoji, nhắn theo ảnh, xóa ảnh =====
+    async function sendEmoji(imageId, emojiChar) {
+        const { ok } = await postJSON(`/image/${imageId}/emoji`, { emoji: emojiChar });
+        showToast(ok ? `Đã thả ${emojiChar} thành công!` : 'Không thể thả cảm xúc!', ok);
+    }
+
+    async function sendReplyImage(receiverId, imgId, inputEl) {
+        const message = (inputEl.value || '').trim();
+        if (!message) return;
+        const { ok } = await postJSON(`/chat/to/${receiverId}/reply/image/${imgId}`, { message });
+        if (ok) {
+            inputEl.value = '';
+            showToast('Đã gửi tin nhắn!', true);
+        } else {
+            showToast('Không thể gửi tin nhắn!', false);
+        }
+    }
+
+    async function deletePost(imageId, sectionEl) {
+        if (!confirm('Xóa khoảnh khắc này? Hành động không thể hoàn tác.')) return;
+        const { ok } = await postJSON(`/image/delete/${imageId}`, {});
+        if (ok) {
+            sectionEl.remove();
+            showToast('Đã xóa khoảnh khắc.', true);
+        } else {
+            showToast('Không thể xóa ảnh này!', false);
+        }
+    }
+
+    // Event delegation: dùng chung cho post server-render lẫn post fetch thêm
+    mainFeed.addEventListener('click', (e) => {
+        const emojiBtn = e.target.closest('.emoji-btn');
+        if (emojiBtn) { sendEmoji(emojiBtn.dataset.id, emojiBtn.dataset.emoji); return; }
+
+        const sendBtn = e.target.closest('.btn-reply-send');
+        if (sendBtn) {
+            const input = sendBtn.closest('.feed-reply-bar').querySelector('.reply-input');
+            sendReplyImage(sendBtn.dataset.receiver, sendBtn.dataset.img, input);
+            return;
+        }
+
+        const delBtn = e.target.closest('.post-delete-btn');
+        if (delBtn) { deletePost(delBtn.dataset.id, delBtn.closest('.card-item')); }
+    });
+
+    mainFeed.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        const input = e.target.closest('.reply-input');
+        if (input) {
+            e.preventDefault();
+            sendReplyImage(input.dataset.receiver, input.dataset.img, input);
+        }
+    });
+
+    // ===== Infinite scroll =====
+    async function fetchNextFeedPage() {
+        if (!hasNext || isFetching || !lastPage) return;
+        isFetching = true;
+        try {
+            // Lưu ý: endpoint KHÔNG có dấu / cuối (khớp urls.py)
+            const res = await fetch(`/image/fetch/${encodeURIComponent(lastPage)}/10`);
+            const data = await res.json();
+            if (res.ok) {
+                hasNext = data.has_next;
+                lastPage = data.last_page || '';
+                const feedList = document.getElementById('feed-list');
+                (data.images || []).forEach(p => feedList.appendChild(buildPost(p)));
+            }
+        } catch (err) {
+            console.error('Lỗi infinite scroll:', err);
+        } finally {
+            isFetching = false;
+        }
+    }
+
+    const endCard = document.getElementById('end-card');
+    if (endCard) {
+        const isDesktopView = window.innerWidth >= 992;
+        new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting && hasNext) fetchNextFeedPage();
+            });
+        }, { root: isDesktopView ? document.querySelector('.right-column') : mainFeed, threshold: 0.2 }).observe(endCard);
+    }
+
+    // ===== Webcam =====
+    async function startCamera(videoElement) {
+        if (!videoElement) return;
+        try {
+            if (!currentStream || !currentStream.active) {
+                currentStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'user', aspectRatio: 1 },
+                    audio: false
+                });
+            }
+            videoElement.srcObject = currentStream;
+            await videoElement.play();
+        } catch (err) {
+            console.warn('Chưa cấp quyền webcam:', err);
+        }
+    }
+
+    function stopCamera() {
+        if (currentStream) {
+            currentStream.getTracks().forEach(t => t.stop());
+            currentStream = null;
+        }
+    }
+
+    // ===== Preview sau khi chụp / chọn ảnh =====
+    function enterPreviewMode(base64Image) {
+        isPreviewMode = true;
+        capturedBase64Data = base64Image;
+
+        const isDesktop = window.innerWidth >= 992;
+        const camFrame = document.getElementById(isDesktop ? 'desktop-cam-frame' : 'mobile-cam-frame');
+        const previewFrame = document.getElementById(isDesktop ? 'desktop-preview-frame' : 'mobile-preview-frame');
+        const canvas = document.getElementById(isDesktop ? 'desktop-canvas' : 'mobile-canvas');
+        const shutterBtn = document.getElementById(isDesktop ? 'desktop-shutter-btn' : 'mobile-shutter-btn');
+        const cancelBtn = document.getElementById(isDesktop ? 'desktop-cancel-btn' : 'mobile-cancel-btn');
+
+        const img = new Image();
+        img.onload = () => {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            canvas.getContext('2d').drawImage(img, 0, 0);
+        };
+        img.src = base64Image;
+
+        camFrame?.classList.add('d-none');
+        previewFrame?.classList.remove('d-none');
+
+        if (shutterBtn) {
+            shutterBtn.classList.add('mode-send');
+            shutterBtn.innerHTML = '<i class="bi bi-send-fill"></i>';
+        }
+        if (cancelBtn) cancelBtn.innerHTML = '<i class="bi bi-x-lg text-danger fs-5"></i>';
+    }
+
+    function exitPreviewMode() {
+        isPreviewMode = false;
+        capturedBase64Data = null;
+
+        const isDesktop = window.innerWidth >= 992;
+        const camFrame = document.getElementById(isDesktop ? 'desktop-cam-frame' : 'mobile-cam-frame');
+        const previewFrame = document.getElementById(isDesktop ? 'desktop-preview-frame' : 'mobile-preview-frame');
+        const shutterBtn = document.getElementById(isDesktop ? 'desktop-shutter-btn' : 'mobile-shutter-btn');
+        const cancelBtn = document.getElementById(isDesktop ? 'desktop-cancel-btn' : 'mobile-cancel-btn');
+        const captionInput = document.getElementById(isDesktop ? 'desktop-caption-input' : 'mobile-caption-input');
+
+        if (captionInput) captionInput.value = '';
+        camFrame?.classList.remove('d-none');
+        previewFrame?.classList.add('d-none');
+
+        if (shutterBtn) {
+            shutterBtn.classList.remove('mode-send');
+            shutterBtn.innerHTML = '';
+        }
+        if (cancelBtn) cancelBtn.innerHTML = '<i class="bi bi-arrow-repeat"></i>';
+
+        startCamera(document.getElementById(isDesktop ? 'webcam-desktop' : 'webcam-mobile'));
+    }
+
+    // ===== Chụp / gửi =====
+    document.querySelectorAll('.shutter-trigger').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (!isPreviewMode) {
+                const isDesktop = window.innerWidth >= 992;
+                const activeVideo = document.getElementById(isDesktop ? 'webcam-desktop' : 'webcam-mobile');
+
+                if (!activeVideo || !activeVideo.srcObject) {
+                    showToast('Camera chưa sẵn sàng — hãy cấp quyền camera!', false);
+                    return;
+                }
+
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = activeVideo.videoWidth || 400;
+                tempCanvas.height = activeVideo.videoHeight || 400;
+                const ctx = tempCanvas.getContext('2d');
+                ctx.translate(tempCanvas.width, 0);
+                ctx.scale(-1, 1);
+                ctx.drawImage(activeVideo, 0, 0, tempCanvas.width, tempCanvas.height);
+
+                enterPreviewMode(tempCanvas.toDataURL('image/jpeg', 0.9));
+            } else {
+                handleSendPost();
+            }
+        });
+    });
+
+    document.querySelectorAll('.upload-btn-trigger').forEach(btn => {
+        btn.addEventListener('click', () => fileInput?.click());
+    });
+
+    fileInput?.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => enterPreviewMode(event.target.result);
+        reader.readAsDataURL(file);
+    });
+
+    document.querySelectorAll('.action-cancel-btn').forEach(btn => {
+        btn.addEventListener('click', () => { if (isPreviewMode) exitPreviewMode(); });
+    });
+
+    // ===== Đăng ảnh (/image/create) =====
+    function handleSendPost() {
+        if (!capturedBase64Data) return;
+
+        const isDesktop = window.innerWidth >= 992;
+        const captionInput = document.getElementById(isDesktop ? 'desktop-caption-input' : 'mobile-caption-input');
+        const payload = { image: capturedBase64Data, text: captionInput ? captionInput.value : '' };
+
+        exitPreviewMode();
+        if (!isDesktop) mainFeed?.scrollTo({ top: window.innerHeight, behavior: 'smooth' });
+
+        uploadImageInBackground(payload);
+    }
+
+    async function uploadImageInBackground(payload) {
+        try {
+            const { ok, data } = await postJSON('/image/create', payload);
+            if (ok) {
+                showToast(data.success || 'Đã đăng khoảnh khắc mới! 🌟', true);
+                setTimeout(() => location.reload(), 900);
+            } else {
+                showToast(data.error || 'Gửi ảnh thất bại!', false);
+            }
+        } catch (err) {
+            showToast('Lỗi kết nối máy chủ!', false);
+        }
+    }
+
+    // ===== Quản lý camera theo viewport =====
+    const cameraCard = document.getElementById('camera-card');
+    const mobileVideo = document.getElementById('webcam-mobile');
+
+    if (cameraCard && mainFeed && window.innerWidth < 992) {
+        new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    if (!isPreviewMode) startCamera(mobileVideo);
+                } else {
+                    stopCamera();
+                }
+            });
+        }, { root: mainFeed, threshold: 0.5 }).observe(cameraCard);
+    }
+
+    const desktopVideo = document.getElementById('webcam-desktop');
+    const desktopCamBtn = document.getElementById('desktop-cam-toggle');
+    let isDesktopCamOn = true;
+
+    if (window.innerWidth >= 992) startCamera(desktopVideo);
+
+    desktopCamBtn?.addEventListener('click', () => {
+        const icon = desktopCamBtn.querySelector('i');
+        if (isDesktopCamOn) {
+            stopCamera();
+            if (desktopVideo) desktopVideo.srcObject = null;
+            if (icon) icon.className = 'bi bi-camera-video-off-fill text-danger';
+            isDesktopCamOn = false;
+        } else {
+            startCamera(desktopVideo);
+            if (icon) icon.className = 'bi bi-camera-video-fill text-warning';
+            isDesktopCamOn = true;
+        }
+    });
+</script>
+{% endblock %}

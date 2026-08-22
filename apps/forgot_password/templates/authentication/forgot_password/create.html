@@ -1,16 +1,88 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-  <meta charset="utf-8">
-  <title>Quên mật khẩu</title>
-</head>
-<body>
-  <h1>Quên mật khẩu</h1>
-  <p>Nhập email của bạn, chúng tôi sẽ gửi mã xác nhận.</p>
-  <form method="post">
-    {% csrf_token %}
-    <input type="email" name="email" placeholder="Email của bạn" required>
-    <button type="submit">Gửi mã xác nhận</button>
-  </form>
-</body>
-</html>
+{% extends 'base.html' %}
+
+{% block title %}Quên mật khẩu • Locket{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        height: 100vh;
+        height: 100dvh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
+        background-color: #121212;
+        padding: 16px;
+    }
+
+    .auth-card { width: min(420px, 92vw); z-index: 1; text-align: center; }
+    .auth-icon {
+        width: 72px; height: 72px;
+        border-radius: 50%;
+        margin: 0 auto 16px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.9rem;
+        color: var(--amber);
+        background: rgba(255, 184, 0, 0.14);
+        border: 1px solid rgba(255, 184, 0, 0.4);
+    }
+    .auth-card h1 { font-size: 1.5rem; font-weight: 800; margin-bottom: 6px; }
+    .auth-sub { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 22px; }
+    .auth-links { font-size: 0.88rem; color: var(--text-muted); margin-top: 16px; }
+    .auth-links a { color: var(--amber); text-decoration: underline; }
+</style>
+{% endblock %}
+
+{% block body %}
+    <div class="glow"></div>
+
+    <div class="glass-card auth-card">
+        <div style="position:relative;">
+            <div class="auth-icon"><i class="bi bi-key-fill"></i></div>
+            <h1>Quên mật khẩu?</h1>
+            <p class="auth-sub">Nhập email của bạn, Locket sẽ gửi mã xác nhận (hiệu lực 10 phút).</p>
+
+            {% if error %}<div class="auth-error"><i class="bi bi-exclamation-circle-fill"></i> {{ error }}</div>{% endif %}
+
+            <form id="forgot-form" method="post" action="{% url 'forgot_password' %}">
+                {% csrf_token %}
+                <div class="form-group-locket">
+                    <input class="form-control-locket" type="email" name="email" id="email"
+                           placeholder="Email của bạn" required autocomplete="email">
+                </div>
+                <button type="submit" class="btn-amber w-100" id="submit-btn">
+                    <i class="bi bi-send-fill"></i> Gửi mã xác nhận
+                </button>
+            </form>
+
+            <p class="auth-links mb-0"><a href="{% url 'login' %}"><i class="bi bi-arrow-left"></i> Quay lại đăng nhập</a></p>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Submit bằng fetch: server redirect -> đi tiếp; server render lại form -> báo lỗi đẹp
+    document.getElementById('forgot-form').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const btn = document.getElementById('submit-btn');
+        btn.disabled = true;
+        btn.innerHTML = 'Đang gửi mã...';
+        try {
+            const res = await fetch(this.action, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrfToken() },
+                body: new FormData(this)
+            });
+            if (res.redirected) { window.location.assign(res.url); return; }
+            showToast(res.status === 404 ? 'Không tìm thấy tài khoản với email này.'
+                    : res.status === 503 ? 'Không gửi được email lúc này, thử lại sau.'
+                    : 'Không gửi được mã xác nhận.', false);
+        } catch (err) {
+            showToast('Lỗi kết nối máy chủ!', false);
+        }
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-send-fill"></i> Gửi mã xác nhận';
+    });
+</script>
+{% endblock %}

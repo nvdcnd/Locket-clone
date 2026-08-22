@@ -1,23 +1,274 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-  <meta charset="utf-8">
-  <title>Thông tin cá nhân</title>
-</head>
-<body>
-  <h1>Thông tin cá nhân</h1>
-  <ul>
+{% extends 'app_base.html' %}
+
+{% block title %}Trang cá nhân • Locket{% endblock %}
+
+{% block nav_me %}active{% endblock %}
+{% block mnav_me %}active{% endblock %}
+
+{% block topbar_center %}
+<div class="glass-panel" style="height:42px;padding:0 20px;border-radius:21px;font-weight:600;font-size:0.9rem;display:flex;align-items:center;gap:8px;">
+    <i class="bi bi-person-fill text-warning"></i> Cá nhân
+</div>
+{% endblock %}
+
+{% block page_css %}
+<style>
+    .profile-wrap {
+        height: 100%;
+        overflow-y: auto;
+        padding: 100px 16px 110px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .profile-card {
+        width: min(480px, 100%);
+        text-align: center;
+        border-radius: 40px;
+        padding: 34px 28px;
+    }
+
+    .profile-avatar {
+        width: 110px;
+        height: 110px;
+        min-width: 110px;
+        font-size: 2.6rem;
+        margin: 0 auto 14px;
+        border-width: 3px;
+        box-shadow: 0 0 30px var(--amber-glow);
+    }
+
+    .profile-name { font-size: 1.5rem; font-weight: 800; }
+    .profile-email { color: var(--text-muted); font-size: 0.9rem; margin-top: 2px; }
+
+    .profile-chips {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin-top: 14px;
+        flex-wrap: wrap;
+    }
+
+    .profile-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 7px 16px;
+        border-radius: 20px;
+        background: var(--panel-white);
+        border: 1px solid var(--glass-border);
+        font-size: 0.83rem;
+        font-weight: 600;
+    }
+
+    .profile-chip.amber {
+        background: rgba(255, 184, 0, 0.14);
+        border-color: rgba(255, 184, 0, 0.4);
+        color: var(--amber);
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .profile-actions {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin-top: 20px;
+        flex-wrap: wrap;
+    }
+
+    /* Panel chỉnh sửa */
+    .edit-card {
+        width: min(480px, 100%);
+        border-radius: 30px;
+        display: none;
+        text-align: left;
+    }
+
+    .edit-card.show { display: block; }
+    .edit-hint { font-size: 0.78rem; color: var(--text-muted); margin-top: -8px; margin-bottom: 14px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="profile-wrap thin-scroll">
+
     {% for info in informations %}
-      <li>
-        {% if info.avatar %}
-          <img src="{{ info.avatar.url }}" alt="avatar" width="100">
-        {% endif %}
-        <p>Tên: {{ info.user.username }}</p>
-        <p>Email: {{ info.user.email }}</p>
-      </li>
+    <div class="glass-card profile-card">
+        <div style="position:relative;">
+            {% if info.avatar %}
+                <img src="{{ info.avatar.url }}" class="avatar-circle profile-avatar d-block" alt="">
+            {% else %}
+                <div class="avatar-initial profile-avatar">{{ info.user.username|first|upper }}</div>
+            {% endif %}
+
+            <div class="profile-name">{{ info.user.username }}</div>
+            {% if info.user_id == request.user.id %}
+                <div class="profile-email">{{ info.user.email }}</div>
+            {% endif %}
+
+            <div class="profile-chips">
+                <span class="profile-chip amber" id="id-chip" data-id="{{ info.id }}" title="Bấm để sao chép ID">
+                    <i class="bi bi-clipboard"></i> ID: #{{ info.id }}
+                </span>
+                <span class="profile-chip"><i class="bi bi-people-fill text-warning"></i> {{ info.friends.count }} bạn bè</span>
+            </div>
+
+            {% if info.user_id == request.user.id %}
+                {# ===== Trang của chính mình ===== #}
+                <div class="profile-actions">
+                    <button class="btn-amber" id="toggle-edit-btn"><i class="bi bi-pencil-fill"></i> Chỉnh sửa</button>
+                    <form method="post" action="{% url 'logout' %}" class="logout-form">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-ghost danger"><i class="bi bi-box-arrow-right"></i> Đăng xuất</button>
+                    </form>
+                </div>
+            {% else %}
+                {# ===== Trang người khác — xác định có phải bạn bè không ===== #}
+                <span id="friend-flag" style="display:none">{% if is_friend %}1{% endif %}</span>
+                <div class="profile-actions">
+                    <a href="{% url 'chat_with' info.id %}" class="btn-amber friend-only" style="display:none;">
+                        <i class="bi bi-chat-fill"></i> Nhắn tin
+                    </a>
+                    <button class="btn-ghost danger friend-only" id="unfriend-btn" data-id="{{ info.id }}" data-name="{{ info.user.username }}" style="display:none;">
+                        <i class="bi bi-person-dash-fill"></i> Hủy kết bạn
+                    </button>
+                    <button class="btn-amber not-friend-only" id="addfriend-btn" data-id="{{ info.id }}" style="display:none;">
+                        <i class="bi bi-person-plus-fill"></i> Kết bạn
+                    </button>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if info.user_id == request.user.id %}
+    <!-- Panel chỉnh sửa thông tin -->
+    <div class="glass-card edit-card" id="edit-card">
+        <div style="position:relative;">
+            <h5 class="fw-bold mb-3"><i class="bi bi-pencil-fill text-warning"></i> Chỉnh sửa thông tin</h5>
+            <form id="edit-form">
+                <div class="form-group-locket">
+                    <label class="form-label-locket" for="edit-username">Tên hiển thị</label>
+                    <input class="form-control-locket" type="text" id="edit-username" name="username"
+                           placeholder="{{ info.user.username }}" maxlength="150">
+                </div>
+                <div class="form-group-locket">
+                    <label class="form-label-locket" for="edit-email">Email</label>
+                    <input class="form-control-locket" type="email" id="edit-email" name="email"
+                           placeholder="{{ info.user.email }}">
+                </div>
+                <div class="form-group-locket">
+                    <label class="form-label-locket">Ảnh đại diện mới</label>
+                    <label class="file-input-wrapper" for="edit-avatar">
+                        <input type="file" id="edit-avatar" name="file" class="actual-file-input" accept="image/*">
+                        <span class="custom-file-button">Chọn ảnh</span>
+                        <span class="file-chosen-text" id="edit-file-name">Giữ nguyên ảnh hiện tại</span>
+                    </label>
+                </div>
+                <div class="form-group-locket">
+                    <label class="form-label-locket" for="edit-password">Mật khẩu mới</label>
+                    <input class="form-control-locket" type="password" id="edit-password" name="password"
+                           autocomplete="new-password" minlength="6">
+                </div>
+                <p class="edit-hint"><i class="bi bi-info-circle"></i> Bỏ trống mục nào thì mục đó giữ nguyên. Mật khẩu mới cần ít nhất 8 ký tự, không quá đơn giản.</p>
+                <button type="submit" class="btn-amber w-100" id="edit-save-btn"><i class="bi bi-check-lg"></i> Lưu thay đổi</button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
     {% empty %}
-      <li>Không tìm thấy thông tin.</li>
+    <div class="glass-card profile-card">
+        <i class="bi bi-person-x text-warning display-3 mb-3 d-block"></i>
+        <h5 class="fw-bold mb-2">Không tìm thấy người dùng</h5>
+        <a href="{% url 'friends_list' %}" class="btn-amber mt-2"><i class="bi bi-arrow-left"></i> Quay lại</a>
+    </div>
     {% endfor %}
-  </ul>
-</body>
-</html>
+
+</div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+    // Sao chép ID
+    const idChip = document.getElementById('id-chip');
+    idChip?.addEventListener('click', async () => {
+        try {
+            await navigator.clipboard.writeText(idChip.dataset.id);
+            showToast('Đã sao chép ID #' + idChip.dataset.id, true);
+        } catch (e) {
+            showToast('ID: #' + idChip.dataset.id, true);
+        }
+    });
+
+    // Bật/tắt panel chỉnh sửa
+    document.getElementById('toggle-edit-btn')?.addEventListener('click', () => {
+        document.getElementById('edit-card').classList.toggle('show');
+    });
+
+    // Tên file avatar mới
+    const editAvatar = document.getElementById('edit-avatar');
+    editAvatar?.addEventListener('change', function () {
+        document.getElementById('edit-file-name').textContent =
+            (this.files && this.files.length) ? this.files[0].name : 'Giữ nguyên ảnh hiện tại';
+    });
+
+    // Lưu thông tin (POST multipart /user/information/change/)
+    document.getElementById('edit-form')?.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const btn = document.getElementById('edit-save-btn');
+        btn.disabled = true;
+        try {
+            const res = await fetch("{% url 'bio_information_change' %}", {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrfToken() },
+                body: new FormData(this)
+            });
+            if (res.ok) {
+                showToast('Đã cập nhật thông tin! 💛', true);
+                setTimeout(() => location.reload(), 900);
+            } else {
+                let msg = 'Cập nhật thất bại!';
+                try { const d = await res.json(); if (d.error) msg = d.error; } catch (err) {}
+                showToast(msg, false);
+                btn.disabled = false;
+            }
+        } catch (err) {
+            showToast('Lỗi kết nối máy chủ!', false);
+            btn.disabled = false;
+        }
+    });
+
+    // Trang người khác: hiện nút theo trạng thái bạn bè
+    const friendFlag = document.getElementById('friend-flag');
+    if (friendFlag) {
+        const isFriend = friendFlag.textContent.includes('1');
+        document.querySelectorAll(isFriend ? '.friend-only' : '.not-friend-only')
+            .forEach(el => el.style.display = 'inline-flex');
+    }
+
+    // Kết bạn
+    document.getElementById('addfriend-btn')?.addEventListener('click', async function () {
+        const { ok, data } = await postJSON(`/user/friends/add/${this.dataset.id}`, {});
+        if (ok) {
+            showToast('Đã kết bạn thành công! 💛', true);
+            setTimeout(() => location.reload(), 800);
+        } else {
+            showToast(data.error === 'already friends' ? 'Hai bạn đã là bạn bè rồi!' : 'Không thể kết bạn!', false);
+        }
+    });
+
+    // Hủy kết bạn
+    document.getElementById('unfriend-btn')?.addEventListener('click', async function () {
+        if (!confirm('Hủy kết bạn với ' + this.dataset.name + '?')) return;
+        const { ok } = await postJSON(`/user/friends/remove/${this.dataset.id}`, {});
+        if (ok) {
+            showToast('Đã hủy kết bạn.', true);
+            setTimeout(() => location.reload(), 800);
+        } else {
+            showToast('Không thể hủy kết bạn!', false);
+        }
+    });
+</script>
+{% endblock %}

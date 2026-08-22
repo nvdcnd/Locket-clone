@@ -5,10 +5,8 @@ tạo người dùng kèm Bio, tạo ảnh mẫu, thư mục chứa ảnh tạm.
 """
 import tempfile
 
-from django.apps import apps as app_registry
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.db import connection
 from django.test import TestCase
 
 from apps.bio.models import Bio
@@ -17,17 +15,20 @@ from apps.bio.models import Bio
 # không làm bẩn thư mục dự án.
 TEST_MEDIA_DIR = tempfile.mkdtemp(prefix='drf_test_media_')
 
-# Hasher nhanh cho test. Settings mới đặt BCrypt lên đầu nhưng gói bcrypt
-# chưa được cài (không có trong requirements.txt) — thiếu override này thì
-# mọi thao tác tạo user / đăng nhập đều sập.
+# Hasher nhanh cho test (BCrypt thật chậm ~100ms/lần băm).
 FAST_HASHERS = ['django.contrib.auth.hashers.MD5PasswordHasher']
 
 # Cấu hình chung cho các class test: tắt rate limit, ảnh vào thư mục tạm,
-# băm mật khẩu nhanh.
+# băm mật khẩu nhanh, channel layer trong RAM, lưu file cục bộ.
 TEST_SETTINGS = dict(
     RATELIMIT_ENABLE=False,
     MEDIA_ROOT=TEST_MEDIA_DIR,
     PASSWORD_HASHERS=FAST_HASHERS,
+    CHANNEL_LAYERS={'default': {'BACKEND': 'channels.layers.InMemoryChannelLayer'}},
+    STORAGES={
+        'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+        'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
+    },
 )
 
 # Một ảnh GIF 1x1 hợp lệ, đủ nhỏ để nhét thẳng vào code test.
@@ -37,34 +38,14 @@ TINY_GIF = (
     b'\x02\x02D\x01\x00;'
 )
 
-_tables_ready = False
-
-
-def create_missing_tables():
-    """Tự tạo bảng cho những model chưa có file migration.
-
-    Các app bio/chat/image_share/forgot_password có thư mục migrations
-    nhưng rỗng, nên Django không tạo bảng cho chúng trong test DB.
-    Hàm này vá lại chuyện đó ngay trong phạm vi test, không đụng vào dự án.
-    """
-    global _tables_ready
-    if _tables_ready:
-        return
-    existing = set(connection.introspection.table_names())
-    with connection.schema_editor() as editor:
-        for model in app_registry.get_models():
-            if model._meta.db_table not in existing:
-                editor.create_model(model)
-    _tables_ready = True
-
 
 class BaseTestCase(TestCase):
-    """TestCase dùng chung: bảo đảm bảng dữ liệu đã sẵn sàng trước khi test."""
+    """TestCase dùng chung.
 
-    @classmethod
-    def setUpClass(cls):
-        create_missing_tables()
-        super().setUpClass()
+    Trước đây class này tự tạo bảng vì các app chưa có migration; giờ migration
+    thật đã có (apps/*/migrations/0001_initial.py) nên chỉ còn là alias của TestCase,
+    giữ tên để các file test không phải đổi.
+    """
 
 
 def sample_image(name='sample.gif'):
@@ -84,6 +65,5 @@ def create_user_with_bio(username='an', password='mat-khau-manh-123'):
 
 
 def make_friends(bio1, bio2):
-    """Cho hai Bio trở thành bạn của nhau (đủ cả hai chiều)."""
+    """Cho hai Bio trở thành bạn của nhau (ManyToMany đối xứng nên một chiều là đủ)."""
     bio1.friends.add(bio2)
-    bio2.friends.add(bio1)

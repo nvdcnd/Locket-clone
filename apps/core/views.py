@@ -1,27 +1,39 @@
-from django.shortcuts import render,redirect
-from django.http.response import JsonResponse
-from django.views.decorators.http import require_http_methods
-from ..image_share.models import Image
-from ..bio.models import Bio
-from django_ratelimit.decorators import ratelimit
+from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db.models import Q
+from django.http import JsonResponse
+from django.shortcuts import redirect, render
+from django.views.decorators.http import require_http_methods
+from django_ratelimit.decorators import ratelimit
 
-# Create your views here.
-@require_http_methods(["GET", "HEAD"])
+from apps.bio.models import Bio
+from apps.image_share.models import Image
+
+FEED_PAGE_SIZE = 10
+
+
+@require_http_methods(['GET', 'HEAD'])
 def health_check(request):
-    return JsonResponse({"status":'ok'},status=200)
+    return JsonResponse({'status': 'ok'}, status=200)
+
 
 @ratelimit(key='user_or_ip', rate='500/m')
 def index(request):
-    if request.user.is_authenticated:
-        bio = Bio.objects.filter(user=request.user).first()
-        if not bio:
-            return redirect('check')
-        friend_ids = bio.friends.values_list('id', flat=True)
-        imgs = Image.objects.filter(Q(user=bio) | Q(user_id__in=friend_ids)).order_by('-create_at').all()
-        pagination = Paginator(imgs, 10)
-        p = pagination.get_page(1)
-        return render(request, 'images/index.html',{'images':p,'has_next': len(imgs) > 10, 'last_page':p[-1].create_at if len(p) else None})
-    else:
+    if not request.user.is_authenticated:
         return render(request, 'index.html')
+
+    bio = Bio.objects.filter(user=request.user).first()
+    if not bio:
+        return redirect('check')
+
+    imgs = (
+        Image.objects.filter(Q(user=bio) | Q(user__in=bio.friends.all()))
+        .select_related('user__user')
+        .order_by('-create_at')
+    )
+    page = Paginator(imgs, FEED_PAGE_SIZE).get_page(1)
+    return render(request, 'images/index.html', {
+        'images': page,
+        'has_next': page.has_next(),
+        'last_page': page[-1].create_at if len(page) else None,
+    })

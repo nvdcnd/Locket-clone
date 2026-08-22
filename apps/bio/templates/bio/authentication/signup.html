@@ -1,16 +1,91 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-  <meta charset="utf-8">
-  <title>Đăng ký</title>
-</head>
-<body>
-  <h1>Đăng ký</h1>
-  <form method="post" action="{% url 'signup' %}" enctype="multipart/form-data">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Đăng ký</button>
-  </form>
-  <p><a href="{% url 'login' %}">Đã có tài khoản? Đăng nhập</a></p>
-</body>
-</html>
+{% extends 'base.html' %}
+
+{% block title %}Đăng ký • Locket{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-color: #121212;
+        padding: 24px 16px;
+        overflow-y: auto;
+    }
+
+    .auth-card { width: min(480px, 92vw); z-index: 1; text-align: center; }
+    .auth-card h1 { font-size: 1.8rem; font-weight: 800; margin-bottom: 4px; }
+    .auth-card h1 span { color: var(--amber); }
+    .auth-sub { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 22px; }
+    .auth-links { font-size: 0.88rem; color: var(--text-muted); margin-top: 16px; }
+    .auth-links a { color: var(--amber); text-decoration: underline; }
+</style>
+{% endblock %}
+
+{% block body %}
+    <div class="glow"></div>
+
+    <div class="glass-card auth-card">
+        <div style="position:relative;">
+            <h1>Tạo tài khoản <span>💛</span></h1>
+            <p class="auth-sub">Chỉ mất 30 giây để bắt đầu chia sẻ khoảnh khắc</p>
+
+            {% if errors %}
+            <div class="auth-error"><ul>{% for err in errors %}<li>{{ err }}</li>{% endfor %}</ul></div>
+            {% endif %}
+
+            <form method="post" action="{% url 'signup' %}" enctype="multipart/form-data" id="signup-form">
+                {% csrf_token %}
+                <div class="form-group-locket">
+                    <label class="form-label-locket" for="email">Email</label>
+                    <input class="form-control-locket" type="email" name="email" id="email" required autocomplete="email">
+                </div>
+                <div class="form-group-locket">
+                    <label class="form-label-locket" for="username">Tên hiển thị</label>
+                    <input class="form-control-locket" type="text" name="username" id="username" required maxlength="150" autocomplete="username">
+                </div>
+                <div class="form-group-locket">
+                    <label class="form-label-locket">Ảnh đại diện</label>
+                    <label class="file-input-wrapper" for="avatar">
+                        <input type="file" id="avatar" name="image" class="actual-file-input" accept="image/*" required>
+                        <span class="custom-file-button">Chọn ảnh</span>
+                        <span class="file-chosen-text" id="file-name">Chưa chọn ảnh nào</span>
+                    </label>
+                </div>
+                <div class="form-group-locket">
+                    <label class="form-label-locket" for="password">Mật khẩu</label>
+                    <input class="form-control-locket" type="password" name="password" id="password" required minlength="6" autocomplete="new-password">
+                </div>
+                <div class="form-group-locket">
+                    <label class="form-label-locket" for="password2">Nhập lại mật khẩu</label>
+                    <input class="form-control-locket" type="password" id="password2" required autocomplete="new-password">
+                </div>
+                <button type="submit" class="btn-amber w-100">Đăng ký</button>
+            </form>
+
+            <p class="auth-links mb-0">Đã có tài khoản? <a href="{% url 'login' %}">Đăng nhập</a></p>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const avatarInput = document.getElementById('avatar');
+    const fileName = document.getElementById('file-name');
+    avatarInput.addEventListener('change', function () {
+        fileName.textContent = (this.files && this.files.length)
+            ? this.files[0].name
+            : 'Chưa chọn ảnh nào';
+    });
+
+    document.getElementById('signup-form').addEventListener('submit', function (e) {
+        const p1 = document.getElementById('password').value;
+        const p2 = document.getElementById('password2').value;
+        if (p1 !== p2) {
+            e.preventDefault();
+            showToast('Mật khẩu nhập lại không khớp!', false);
+        }
+    });
+</script>
+{% endblock %}

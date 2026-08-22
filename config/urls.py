@@ -1,32 +1,24 @@
 """
 URL configuration for drf project.
 
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/4.2/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
+https://docs.djangoproject.com/en/4.2/topics/http/urls/
 """
-from django.contrib import admin
-from django.urls import path, include
-#from apps import core, image_share, bio, chat
 from django.conf import settings
 from django.conf.urls.static import static
-from django.conf.urls.i18n import i18n_patterns
+from django.contrib import admin
+from django.urls import include, path
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('', include('apps.core.urls')),
-    path('chat/', include('apps.chat.urls')),
-    path('image/', include('apps.image_share.urls')),
-    path('user/', include('apps.bio.urls')),
-    path('forgot/', include('apps.forgot_password.urls')),
-    path('i18n/', include('django.conf.urls.i18n'))
-] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+    path("admin/", admin.site.urls),
+    path("", include("apps.core.urls")),
+    path("chat/", include("apps.chat.urls")),
+    path("image/", include("apps.image_share.urls")),
+    path("user/", include("apps.bio.urls")),
+    path("forgot/", include("apps.forgot_password.urls")),
+    path("i18n/", include("django.conf.urls.i18n")),
+    path("oauth/", include("allauth.urls")),
+]
+
+# Chỉ có tác dụng khi DEBUG=True: phục vụ ảnh upload từ MEDIA_ROOT (FileSystemStorage ở dev).
+# Static ở dev đã do django.contrib.staticfiles / WhiteNoise lo.
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

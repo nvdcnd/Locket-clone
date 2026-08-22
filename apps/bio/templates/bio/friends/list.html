@@ -1,25 +1,242 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-  <meta charset="utf-8">
-  <title>Bạn bè</title>
-</head>
-<body>
-  <h1>Danh sách bạn bè</h1>
-  <ul>
+{% extends 'app_base.html' %}
+
+{% block title %}Bạn bè • Locket{% endblock %}
+
+{% block nav_friends %}active{% endblock %}
+{% block mnav_friends %}active{% endblock %}
+
+{% block topbar_center %}
+<div class="glass-panel" style="height:42px;padding:0 20px;border-radius:21px;font-weight:600;font-size:0.9rem;display:flex;align-items:center;gap:8px;">
+    <i class="bi bi-people-fill text-warning"></i> Bạn bè
+</div>
+{% endblock %}
+
+{% block page_css %}
+<style>
+    .friends-wrap {
+        height: 100%;
+        overflow-y: auto;
+        padding: 100px 16px 110px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+    }
+
+    /* Panel kết bạn */
+    .add-friend-box {
+        width: min(560px, 100%);
+        border-radius: 30px;
+    }
+
+    .add-friend-row {
+        display: flex;
+        gap: 10px;
+        margin-top: 12px;
+    }
+
+    .add-friend-row .form-control-locket { flex: 1; }
+
+    .my-id-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 14px;
+        border-radius: 20px;
+        background: rgba(255, 184, 0, 0.14);
+        border: 1px solid rgba(255, 184, 0, 0.4);
+        color: var(--amber);
+        font-weight: 700;
+        font-size: 0.85rem;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    /* Card bạn bè */
+    .friend-card {
+        width: min(560px, 100%);
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 16px 20px;
+        border-radius: 30px;
+    }
+
+    .friend-avatar { width: 56px; height: 56px; min-width: 56px; font-size: 1.3rem; }
+
+    .friend-info { flex: 1; min-width: 0; position: relative; z-index: 1; }
+
+    .friend-name {
+        font-weight: 700;
+        font-size: 1.05rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: #ffffff;
+        text-decoration: none;
+        display: block;
+    }
+
+    .friend-name:hover { color: var(--amber); }
+
+    .friend-id { font-size: 0.78rem; color: var(--text-muted); }
+
+    .friend-actions {
+        display: flex;
+        gap: 8px;
+        position: relative;
+        z-index: 1;
+    }
+
+    .friend-actions .btn-glass-circle { width: 40px; height: 40px; min-width: 40px; font-size: 1rem; }
+    .btn-unfriend:hover { color: #ff6b6b; }
+
+    .empty-box {
+        width: min(420px, 100%);
+        text-align: center;
+        padding: 44px 28px;
+        border-radius: 40px;
+    }
+
+    .pager { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+    .pager a, .pager span {
+        padding: 9px 20px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #ffffff;
+        text-decoration: none;
+    }
+    .pager a:hover { color: var(--amber); }
+    .pager .disabled { color: rgba(255, 255, 255, 0.35); pointer-events: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="friends-wrap thin-scroll">
+
+    <!-- Kết bạn mới -->
+    <div class="glass-card add-friend-box">
+        <div style="position:relative;">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <h5 class="fw-bold mb-0"><i class="bi bi-person-plus-fill text-warning"></i> Thêm bạn mới</h5>
+                {% with mybio=request.user.bio_user.first %}
+                <span class="my-id-chip" id="my-id-chip" data-id="{{ mybio.id }}" title="Bấm để sao chép — gửi ID này cho bạn bè để họ thêm bạn">
+                    <i class="bi bi-clipboard"></i> ID của bạn: #{{ mybio.id }}
+                </span>
+                {% endwith %}
+            </div>
+            <div class="add-friend-row">
+                <input type="text" class="form-control-locket" id="add-friend-id" placeholder="Dán ID của bạn bè (dạng xxxxxxxx-xxxx-...)..." autocomplete="off" spellcheck="false">
+                <button class="btn-amber" id="add-friend-btn"><i class="bi bi-plus-lg"></i> Kết bạn</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Danh sách bạn -->
     {% for friend in chat_lists %}
-      <li>
+    <div class="glass-card hoverable friend-card" id="friend-card-{{ friend.id }}">
         {% if friend.avatar %}
-          <img src="{{ friend.avatar.url }}" alt="avatar" width="50">
+            <img src="{{ friend.avatar.url }}" class="avatar-circle friend-avatar" alt="">
+        {% else %}
+            <div class="avatar-initial friend-avatar">{{ friend.user.username|first|upper }}</div>
         {% endif %}
-        {{ friend.user.username }}
-      </li>
+        <div class="friend-info">
+            <a href="{% url 'friends_information' friend.id %}" class="friend-name">{{ friend.user.username }}</a>
+            <span class="friend-id">ID: #{{ friend.id }}</span>
+        </div>
+        <div class="friend-actions">
+            <a href="{% url 'chat_with' friend.id %}" class="btn-glass-circle glass-panel" title="Nhắn tin">
+                <i class="bi bi-chat-fill"></i>
+            </a>
+            <a href="{% url 'friends_information' friend.id %}" class="btn-glass-circle glass-panel" title="Trang cá nhân">
+                <i class="bi bi-person-fill"></i>
+            </a>
+            <button class="btn-glass-circle glass-panel btn-unfriend" data-id="{{ friend.id }}" data-name="{{ friend.user.username }}" title="Hủy kết bạn">
+                <i class="bi bi-person-dash-fill"></i>
+            </button>
+        </div>
+    </div>
     {% empty %}
-      <li>Bạn chưa có người bạn nào.</li>
+    <div class="glass-card empty-box">
+        <i class="bi bi-people text-warning display-3 mb-3 d-block"></i>
+        <h5 class="fw-bold mb-2">Chưa có người bạn nào</h5>
+        <p class="mb-0" style="color:var(--text-muted);font-size:0.9rem;">
+            Gửi <b style="color:var(--amber)">ID của bạn</b> ở phía trên cho bạn bè,<br>hoặc nhập ID của họ để kết bạn nhé!
+        </p>
+    </div>
     {% endfor %}
-  </ul>
-  {% if chat_lists.has_next %}
-    <a href="?page={{ chat_lists.next_page_number }}">Trang sau</a>
-  {% endif %}
-</body>
-</html>
+
+    {% if chat_lists.has_other_pages %}
+    <div class="pager">
+        {% if chat_lists.has_previous %}
+            <a class="glass-panel" href="?page={{ chat_lists.previous_page_number }}"><i class="bi bi-chevron-left"></i> Trước</a>
+        {% else %}
+            <span class="glass-panel disabled"><i class="bi bi-chevron-left"></i> Trước</span>
+        {% endif %}
+        <span class="glass-panel">{{ chat_lists.number }}/{{ chat_lists.paginator.num_pages }}</span>
+        {% if chat_lists.has_next %}
+            <a class="glass-panel" href="?page={{ chat_lists.next_page_number }}">Sau <i class="bi bi-chevron-right"></i></a>
+        {% else %}
+            <span class="glass-panel disabled">Sau <i class="bi bi-chevron-right"></i></span>
+        {% endif %}
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+    // Sao chép ID của mình
+    const myIdChip = document.getElementById('my-id-chip');
+    myIdChip?.addEventListener('click', async () => {
+        try {
+            await navigator.clipboard.writeText(myIdChip.dataset.id);
+            showToast('Đã sao chép ID #' + myIdChip.dataset.id + ' — gửi cho bạn bè nhé!', true);
+        } catch (e) {
+            showToast('ID của bạn là #' + myIdChip.dataset.id, true);
+        }
+    });
+
+    // Kết bạn bằng ID (POST /user/friends/add/<bio_id>). ID là UUID, không phải số.
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    async function addFriend() {
+        const input = document.getElementById('add-friend-id');
+        const id = input.value.trim().replace(/^#/, '').toLowerCase();
+        if (!UUID_RE.test(id)) {
+            showToast('ID không hợp lệ! Hãy dán đúng ID mà bạn bè gửi cho bạn.', false);
+            return;
+        }
+        const { ok, data } = await postJSON(`/user/friends/add/${id}`, {});
+        if (ok) {
+            showToast('Đã kết bạn thành công! 💛', true);
+            setTimeout(() => location.reload(), 800);
+        } else {
+            const msg = data.error === 'already friends' ? 'Hai bạn đã là bạn bè rồi!'
+                      : data.error === 'invalid friend' ? 'Không tìm thấy người dùng với ID này!'
+                      : 'Không thể kết bạn!';
+            showToast(msg, false);
+        }
+    }
+
+    document.getElementById('add-friend-btn').addEventListener('click', addFriend);
+    document.getElementById('add-friend-id').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); addFriend(); }
+    });
+
+    // Hủy kết bạn (POST /user/friends/remove/<bio_id>)
+    document.querySelectorAll('.btn-unfriend').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            if (!confirm('Hủy kết bạn với ' + btn.dataset.name + '?')) return;
+            const { ok } = await postJSON(`/user/friends/remove/${btn.dataset.id}`, {});
+            if (ok) {
+                document.getElementById('friend-card-' + btn.dataset.id)?.remove();
+                showToast('Đã hủy kết bạn.', true);
+            } else {
+                showToast('Không thể hủy kết bạn!', false);
+            }
+        });
+    });
+</script>
+{% endblock %}

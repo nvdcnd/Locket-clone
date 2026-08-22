@@ -1,0 +1,40 @@
+# Những gì KHÔNG được đưa vào Docker build context / image.
+
+# Secret & cấu hình máy cá nhân
+.env
+.env.*
+!.env.example
+.idea/
+.vscode/
+
+# Git / CI
+.git
+.github/
+.gitignore
+.gitattributes
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+venv/
+.venv/
+env/
+
+# Output sinh ra lúc chạy (image tự collectstatic; media lưu Cloudinary; sqlite chỉ cho dev)
+staticfiles/
+media/
+db.sqlite3
+db.sqlite3-journal
+*.log
+
+# Template demo/thiết kế thô, không nằm trong TEMPLATES.DIRS
+templates/demo/
+
+# Tài liệu
+*.md

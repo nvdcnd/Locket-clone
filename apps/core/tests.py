@@ -1,11 +1,9 @@
-"""Test cho app core: trang chủ và health check.
-
-Mỗi test mô tả một hành vi mà người dùng mong đợi.
-Test nào fail nghĩa là code thật đang không làm đúng hành vi đó.
-"""
+"""Test cho app core: trang chủ, health check và system check môi trường production."""
+from django.conf import settings
 from django.test import Client, override_settings
 from django.urls import reverse
 
+from apps.core.checks import production_environment_check
 from apps.test_helpers import TEST_SETTINGS, BaseTestCase, create_user_with_bio
 
 
@@ -49,3 +47,29 @@ class IndexViewTest(BaseTestCase):
         response = self.client.get(reverse('index'))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'images/index.html')
+
+    def test_login_required_redirects_to_real_login_page(self):
+        """LOGIN_URL phải trỏ về /user/authentication/login (trước đây /accounts/login/ -> 404)."""
+        response = self.client.get(reverse('friends_list'))
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.url.startswith(reverse('login')), response.url)
+        self.assertEqual(self.client.get(response.url).status_code, 200)
+
+
+class SettingsTest(BaseTestCase):
+    def test_login_url_is_a_named_route(self):
+        self.assertEqual(settings.LOGIN_URL, 'login')
+
+    def test_production_env_check_is_silent_outside_production(self):
+        self.assertEqual(production_environment_check(None), [])
+
+    @override_settings(REQUIRE_PRODUCTION_ENV=True, DATABASE_URL='', REDIS_URL='',
+                       USE_CLOUDINARY=False, ALLOWED_HOSTS=['*'])
+    def test_production_env_check_reports_every_missing_piece(self):
+        ids = {e.id for e in production_environment_check(None)}
+        self.assertEqual(ids, {'locket.E001', 'locket.E002', 'locket.E003', 'locket.E005'})
+
+    @override_settings(REQUIRE_PRODUCTION_ENV=True, DATABASE_URL='postgres://x', REDIS_URL='redis://x',
+                       USE_CLOUDINARY=True, ALLOWED_HOSTS=['locket.example.com', '127.0.0.1'])
+    def test_production_env_check_passes_when_configured(self):
+        self.assertEqual(production_environment_check(None), [])
